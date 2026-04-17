@@ -610,20 +610,21 @@ header h1 { font-size: 1.2rem; font-weight: 600; }
         </div>
       </div>
 
-      <div class="card" id="ocpOutputCard" style="display:none">
-        <h2>🔴 OCP Console YAML</h2>
-        <p class="subtitle">In the OpenShift console VM wizard: <strong>Customize VirtualMachine → Scripts tab → Cloud-init → Script</strong> — select <strong>Script</strong> view (not Form), then paste below.</p>
-        <pre class="yaml-output" id="ocpOutput"></pre>
-        <div class="output-actions">
-          <button class="btn btn-primary btn-lg" onclick="copyOutput('ocpOutput')">📋 Copy for OCP Console</button>
-        </div>
+    </div>
+
+    <div class="card" id="ocpOutputCard" style="display:none">
+      <h2>🔴 OCP Console YAML</h2>
+      <p class="subtitle">In the OpenShift console VM wizard: <strong>Customize VirtualMachine → Scripts tab → Cloud-init → Script</strong> — select <strong>Script</strong> view (not Form), then paste below.</p>
+      <pre class="yaml-output" id="ocpOutput"></pre>
+      <div class="output-actions">
+        <button class="btn btn-primary btn-lg" onclick="copyOutput('ocpOutput')">📋 Copy for OCP Console</button>
       </div>
     </div>
 
     <div class="nav-buttons">
       <button class="btn btn-secondary" onclick="prevStep()">← Back</button>
       <button class="btn btn-primary btn-lg" onclick="generateAll()">⚡ Generate Config</button>
-      <button class="btn btn-lg" style="background:#7b1fa2;border-color:#7b1fa2;color:#fff" onclick="generateForOCP()">🔴 Generate for OCP Console</button>
+      <button class="btn btn-lg" style="background:#ee0000;border-color:#cc0000;color:#fff" onclick="generateForOCP()">🔴 Generate for OCP Console</button>
     </div>
   </div>
 
@@ -1406,8 +1407,6 @@ function generateForOCP() {
   const ocpYaml = generateOCPConsoleYAML(userData, networkCfg);
   document.getElementById('ocpOutput').textContent = ocpYaml;
   document.getElementById('ocpOutputCard').style.display = '';
-  // Hide the standard output if it was showing from a previous generateAll()
-  document.getElementById('outputArea').style.display = 'none';
   window.scrollTo(0, document.getElementById('ocpOutputCard').offsetTop - 80);
 }
 
