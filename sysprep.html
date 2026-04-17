@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hatch — Windows Sysprep Generator</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface2: #0f3460;
+    --accent: #0078d4;
+    --accent-hover: #106ebe;
+    --text: #e8e8e8;
+    --text-muted: #9a9aaa;
+    --border: #2a2a4a;
+    --success: #107c10;
+    --warning: #ff8c00;
+    --error: #c50f1f;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+  header {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header svg { flex-shrink: 0; }
+  header h1 { font-size: 1.2rem; font-weight: 600; }
+  header p { font-size: 0.8rem; color: var(--text-muted); }
+  .privacy-badge {
+    margin-left: auto;
+    background: #0a3020;
+    border: 1px solid #107c10;
+    color: #4caf50;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+  .home-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.8rem;
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    white-space: nowrap;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .home-link:hover { color: var(--text); border-color: var(--accent); }
+  .hatch-wordmark { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #facc15; margin-bottom: 1px; }
+  header svg.logo-egg { flex-shrink: 0; }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 16px 80px;
+  }
+  .progress-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 30px;
+    height: 8px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 30px;
+    transition: width 0.3s ease;
+  }
+  .step-indicator {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .step-pill {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    transition: all 0.2s;
+  }
+  .step-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .step-pill.done { background: #0a3020; border-color: #107c10; color: #4caf50; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card .subtitle {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  label .required { color: var(--error); }
+  label .hint {
+    font-weight: 400;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: auto;
+  }
+  input[type="text"], input[type="password"], input[type="number"], select, textarea {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    padding: 9px 12px;
+    font-size: 0.88rem;
+    font-family: inherit;
+    width: 100%;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: #1a1a2e; }
+  textarea { resize: vertical; min-height: 80px; }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-label { font-size: 0.88rem; }
+  .toggle-desc { font-size: 0.76rem; color: var(--text-muted); margin-top: 2px; }
+  .toggle {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+    margin-left: 12px;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--border);
+    border-radius: 24px;
+    transition: 0.2s;
+  }
+  .slider:before {
+    content: '';
+    position: absolute;
+    height: 18px; width: 18px;
+    left: 3px; bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: 0.2s;
+  }
+  input:checked + .slider { background: var(--accent); }
+  input:checked + .slider:before { transform: translateX(20px); }
+  .tag-input-container {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    cursor: text;
+    min-height: 42px;
+    align-items: center;
+    transition: border-color 0.2s;
+  }
+  .tag-input-container:focus-within { border-color: var(--accent); }
+  .tag {
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tag-remove { cursor: pointer; color: var(--text-muted); font-size: 1rem; line-height: 1; }
+  .tag-remove:hover { color: var(--error); }
+  .tag-input {
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 0.88rem;
+    outline: none;
+    flex: 1;
+    min-width: 120px;
+    padding: 2px 4px;
+  }
+  .btn {
+    padding: 10px 20px;
+    border-radius: var(--radius);
+    border: none;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-success:hover { background: #0e6b0e; }
+  .btn-lg { padding: 13px 28px; font-size: 0.95rem; }
+  .nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 24px;
+    gap: 12px;
+  }
+  .section-hidden { display: none; }
+  .xml-output {
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    white-space: pre;
+    overflow-x: auto;
+    max-height: 500px;
+    overflow-y: auto;
+    color: #e6edf3;
+    tab-size: 2;
+  }
+  .info-box {
+    background: rgba(0,120,212,0.08);
+    border: 1px solid rgba(0,120,212,0.3);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 0.82rem;
+    color: #79b8e8;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 10px;
+  }
+  .warn-box {
+    background: rgba(255,140,0,0.08);
+    border: 1px solid rgba(255,140,0,0.3);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 0.82rem;
+    color: #ffb347;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 10px;
+  }
+  .output-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+  .section-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .disk-partition-builder { display: flex; flex-direction: column; gap: 10px; }
+  .partition-row {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    display: grid;
+    grid-template-columns: auto 1fr 1fr 1fr auto;
+    gap: 10px;
+    align-items: center;
+  }
+  .partition-type-badge {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .badge-system { background: rgba(255,140,0,0.15); color: #ff8c00; border: 1px solid rgba(255,140,0,0.3); }
+  .badge-primary { background: rgba(0,120,212,0.15); color: #0078d4; border: 1px solid rgba(0,120,212,0.3); }
+  .badge-data { background: rgba(16,124,16,0.15); color: #107c10; border: 1px solid rgba(16,124,16,0.3); }
+  .badge-recovery { background: rgba(197,15,31,0.15); color: #c50f1f; border: 1px solid rgba(197,15,31,0.3); }
+  .commands-list { display: flex; flex-direction: column; gap: 8px; }
+  .command-row {
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    gap: 8px;
+    align-items: center;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+  }
+  .command-order { font-size: 0.75rem; color: var(--text-muted); text-align: center; }
+  .copy-feedback {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #107c10;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: var(--radius);
+    font-size: 0.88rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 1000;
+  }
+  .copy-feedback.show { opacity: 1; }
+  @media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .partition-row { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <svg class="logo-egg" width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="spT" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#32325e"/><stop offset="100%" stop-color="#1c1c38"/>
+      </linearGradient>
+      <linearGradient id="spB" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#26263e"/><stop offset="100%" stop-color="#141428"/>
+      </linearGradient>
+      <radialGradient id="spG" cx="50%" cy="50%" r="60%">
+        <stop offset="0%" stop-color="#ffcc70"/><stop offset="100%" stop-color="#ff8020" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <path d="M8 25C8 39 15 47 24 47C33 47 40 39 40 25Z" fill="url(#spB)" stroke="#3d3d62" stroke-width="1.5"/>
+    <ellipse cx="24" cy="22" rx="14" ry="5" fill="url(#spG)"/>
+    <path d="M8 25C8 11 14 3 24 3C34 3 40 11 40 25Z" fill="url(#spT)" stroke="#3d3d62" stroke-width="1.5" transform="translate(0,-3)"/>
+    <path d="M9 23L14 19L19 24L23 18L27 24L32 19L37 23L40 21" stroke="#facc15" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div>
+    <div class="hatch-wordmark">Hatch</div>
+    <h1>Windows Sysprep Generator</h1>
+    <p>Generate autounattend.xml for automated Windows installation</p>
+  </div>
+  <a href="index.html" class="home-link">← Home</a>
+  <div class="privacy-badge">🔒 100% Local — No Data Transmitted</div>
+</header>
+
+<div class="container">
+  <div class="progress-bar"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="step-indicator" id="stepIndicator"></div>
+
+  <!-- STEP 1: Windows Edition -->
+  <div class="step-section" id="step-0">
+    <div class="card">
+      <h2>🖥️ Windows Edition &amp; Architecture</h2>
+      <p class="subtitle">Select the Windows version and edition you are deploying.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Windows Version <span class="required">*</span></label>
+          <select id="winVersion" onchange="onWinVersionChange()">
+            <option value="win11">Windows 11</option>
+            <option value="win10">Windows 10</option>
+            <option value="ws2025">Windows Server 2025</option>
+            <option value="ws2022">Windows Server 2022</option>
+            <option value="ws2019">Windows Server 2019</option>
+            <option value="ws2016">Windows Server 2016</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Edition <span class="required">*</span></label>
+          <select id="winEdition"></select>
+        </div>
+        <div class="form-group">
+          <label>Architecture <span class="required">*</span></label>
+          <select id="winArch">
+            <option value="amd64">x64 (AMD64) — Recommended</option>
+            <option value="x86">x86 (32-bit)</option>
+            <option value="arm64">ARM64</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Firmware Type <span class="required">*</span></label>
+          <select id="firmwareType">
+            <option value="uefi">UEFI (GPT) — Modern systems</option>
+            <option value="bios">Legacy BIOS (MBR) — Older systems</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Product Key <span class="hint">Optional — use KMS/MAK key or leave blank</span></label>
+          <input type="text" id="productKey" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX" maxlength="29" oninput="formatProductKey(this)">
+        </div>
+        <div class="form-group">
+          <label>Key Activation Type</label>
+          <select id="activationType">
+            <option value="none">None / Enter later</option>
+            <option value="kms">KMS (Volume Licensing)</option>
+            <option value="mak">MAK (Multiple Activation Key)</option>
+            <option value="retail">Retail / OEM</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Language & Regional -->
+  <div class="step-section section-hidden" id="step-1">
+    <div class="card">
+      <h2>🌐 Language &amp; Regional Settings</h2>
+      <p class="subtitle">Configure locale, keyboard layout, and time zone.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>UI Language <span class="required">*</span></label>
+          <select id="uiLanguage">
+            <option value="en-US">English (United States)</option>
+            <option value="en-GB">English (United Kingdom)</option>
+            <option value="en-AU">English (Australia)</option>
+            <option value="en-CA">English (Canada)</option>
+            <option value="de-DE">German (Germany)</option>
+            <option value="fr-FR">French (France)</option>
+            <option value="fr-CA">French (Canada)</option>
+            <option value="es-ES">Spanish (Spain)</option>
+            <option value="es-MX">Spanish (Mexico)</option>
+            <option value="it-IT">Italian (Italy)</option>
+            <option value="pt-BR">Portuguese (Brazil)</option>
+            <option value="pt-PT">Portuguese (Portugal)</option>
+            <option value="nl-NL">Dutch (Netherlands)</option>
+            <option value="pl-PL">Polish (Poland)</option>
+            <option value="ru-RU">Russian (Russia)</option>
+            <option value="zh-CN">Chinese Simplified (China)</option>
+            <option value="zh-TW">Chinese Traditional (Taiwan)</option>
+            <option value="ja-JP">Japanese (Japan)</option>
+            <option value="ko-KR">Korean (Korea)</option>
+            <option value="ar-SA">Arabic (Saudi Arabia)</option>
+            <option value="tr-TR">Turkish (Turkey)</option>
+            <option value="sv-SE">Swedish (Sweden)</option>
+            <option value="no-NO">Norwegian (Norway)</option>
+            <option value="da-DK">Danish (Denmark)</option>
+            <option value="fi-FI">Finnish (Finland)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>System Locale (Non-Unicode)</label>
+          <select id="systemLocale">
+            <option value="en-US">en-US</option>
+            <option value="en-GB">en-GB</option>
+            <option value="de-DE">de-DE</option>
+            <option value="fr-FR">fr-FR</option>
+            <option value="es-ES">es-ES</option>
+            <option value="ja-JP">ja-JP</option>
+            <option value="zh-CN">zh-CN</option>
+            <option value="ar-SA">ar-SA</option>
+            <option value="ru-RU">ru-RU</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Keyboard Layout / Input Method</label>
+          <select id="keyboardLayout">
+            <option value="0409:00000409">English (US)</option>
+            <option value="0809:00000809">English (UK)</option>
+            <option value="0c09:00000c09">English (Australian)</option>
+            <option value="0407:00000407">German (Germany)</option>
+            <option value="040c:0000040c">French (France)</option>
+            <option value="0c0c:00000c0c">French (Canada)</option>
+            <option value="0c0a:0000040a">Spanish (Spain)</option>
+            <option value="0410:00000410">Italian (Italy)</option>
+            <option value="0416:00000416">Portuguese (Brazil)</option>
+            <option value="0415:00000415">Polish (Poland)</option>
+            <option value="0419:00000419">Russian (Russia)</option>
+            <option value="0804:00000804">Chinese Simplified</option>
+            <option value="0411:00000411">Japanese</option>
+            <option value="0412:00000412">Korean</option>
+            <option value="041d:0000041d">Swedish (Sweden)</option>
+            <option value="0414:00000414">Norwegian (Bokmål)</option>
+            <option value="0406:00000406">Danish (Denmark)</option>
+            <option value="040b:0000040b">Finnish (Finland)</option>
+            <option value="041f:0000041f">Turkish (Turkey)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Time Zone <span class="required">*</span></label>
+          <select id="timeZone">
+            <option value="UTC">UTC</option>
+            <option value="GMT Standard Time">London (GMT)</option>
+            <option value="Eastern Standard Time">Eastern US (EST/EDT)</option>
+            <option value="Central Standard Time">Central US (CST/CDT)</option>
+            <option value="Mountain Standard Time">Mountain US (MST/MDT)</option>
+            <option value="Pacific Standard Time">Pacific US (PST/PDT)</option>
+            <option value="Alaskan Standard Time">Alaska</option>
+            <option value="Hawaiian Standard Time">Hawaii</option>
+            <option value="Atlantic Standard Time">Atlantic (AST/ADT)</option>
+            <option value="Canada Central Standard Time">Canada Central</option>
+            <option value="SA Eastern Standard Time">São Paulo (BRT)</option>
+            <option value="W. Europe Standard Time">Amsterdam, Berlin, Paris, Rome</option>
+            <option value="Central Europe Standard Time">Prague, Budapest, Warsaw</option>
+            <option value="Eastern Europe Standard Time">Bucharest, Helsinki</option>
+            <option value="FLE Standard Time">Helsinki, Kiev, Riga, Tallinn</option>
+            <option value="GTB Standard Time">Athens, Istanbul</option>
+            <option value="Russian Standard Time">Moscow, St. Petersburg</option>
+            <option value="Arab Standard Time">Kuwait, Riyadh (AST)</option>
+            <option value="Arabian Standard Time">Abu Dhabi, Muscat</option>
+            <option value="Iran Standard Time">Tehran (IRST)</option>
+            <option value="Pakistan Standard Time">Islamabad, Karachi</option>
+            <option value="India Standard Time">Chennai, Mumbai, New Delhi</option>
+            <option value="Bangladesh Standard Time">Dhaka (BST)</option>
+            <option value="SE Asia Standard Time">Bangkok, Hanoi, Jakarta</option>
+            <option value="China Standard Time">Beijing, Chongqing, Hong Kong</option>
+            <option value="Singapore Standard Time">Kuala Lumpur, Singapore</option>
+            <option value="Tokyo Standard Time">Osaka, Sapporo, Tokyo</option>
+            <option value="Korea Standard Time">Seoul (KST)</option>
+            <option value="AUS Eastern Standard Time">Canberra, Melbourne, Sydney</option>
+            <option value="New Zealand Standard Time">Auckland, Wellington</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Disk & Partitioning -->
+  <div class="step-section section-hidden" id="step-2">
+    <div class="card">
+      <h2>💾 Disk &amp; Partitioning</h2>
+      <p class="subtitle">Configure disk selection and partition layout.</p>
+      <div class="warn-box">⚠️ The generated XML will wipe the selected disk. Double-check disk numbers in your environment before deploying.</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Target Disk Number <span class="required">*</span></label>
+          <input type="number" id="diskNumber" value="0" min="0" max="99" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>Disk Layout</label>
+          <select id="diskLayout" onchange="onDiskLayoutChange()">
+            <option value="recommended">Recommended (EFI/Recovery/Windows)</option>
+            <option value="simple">Simple (System + Windows only)</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Windows Partition Size <span class="hint">0 = use all remaining space</span></label>
+          <input type="number" id="winPartSize" value="0" min="0" placeholder="MB (0 = remaining)">
+        </div>
+        <div class="form-group">
+          <label>Windows Drive Letter</label>
+          <select id="winDriveLetter">
+            <option value="C">C:</option>
+            <option value="D">D:</option>
+            <option value="E">E:</option>
+            <option value="W">W:</option>
+          </select>
+        </div>
+      </div>
+      <div id="customPartitionArea" class="section-hidden" style="margin-top:16px">
+        <div class="section-title">Custom Partition Layout</div>
+        <div class="info-box">ℹ️ Define partitions in order. The last partition with size 0 will consume all remaining space. Windows OS partition must be NTFS type.</div>
+        <div class="disk-partition-builder" id="partitionList"></div>
+        <button class="btn btn-secondary" style="margin-top:10px" onclick="addPartition()">+ Add Partition</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4: Administrator Account -->
+  <div class="step-section section-hidden" id="step-3">
+    <div class="card">
+      <h2>👤 Administrator &amp; User Accounts</h2>
+      <p class="subtitle">Configure the built-in administrator and initial user accounts.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Built-in Administrator Account</label>
+          <select id="adminAccountMode" onchange="onAdminModeChange()">
+            <option value="disable">Disabled (use local user — recommended)</option>
+            <option value="enable">Enabled with password</option>
+            <option value="autologon">Enabled + Auto-Logon</option>
+          </select>
+        </div>
+        <div class="form-group" id="adminPasswordGroup">
+          <label>Administrator Password</label>
+          <input type="password" id="adminPassword" placeholder="Leave blank for empty password" autocomplete="new-password">
+        </div>
+      </div>
+      <div style="margin-top: 20px;">
+        <div class="section-title">Local User Accounts</div>
+        <div id="localUserList" class="commands-list"></div>
+        <button class="btn btn-secondary" style="margin-top:10px" onclick="addLocalUser()">+ Add Local User</button>
+      </div>
+      <div style="margin-top: 20px;">
+        <div class="section-title">Auto-Logon Settings</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Auto-Logon Username <span class="hint">Leave blank to disable</span></label>
+            <input type="text" id="autoLogonUser" placeholder="Username for auto-logon">
+          </div>
+          <div class="form-group">
+            <label>Auto-Logon Password</label>
+            <input type="password" id="autoLogonPassword" placeholder="Password" autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label>Auto-Logon Count <span class="hint">How many times to auto-logon</span></label>
+            <input type="number" id="autoLogonCount" value="1" min="1" max="100">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 5: Computer & Network -->
+  <div class="step-section section-hidden" id="step-4">
+    <div class="card">
+      <h2>🌐 Computer Name &amp; Network</h2>
+      <p class="subtitle">Configure computer name and workgroup or domain settings.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Computer Name <span class="hint">* = random name</span></label>
+          <input type="text" id="computerName" value="*" placeholder="* or hostname" maxlength="15">
+        </div>
+        <div class="form-group">
+          <label>Network Configuration</label>
+          <select id="networkType" onchange="onNetworkTypeChange()">
+            <option value="workgroup">Workgroup</option>
+            <option value="domain">Join Domain</option>
+          </select>
+        </div>
+        <div class="form-group" id="workgroupGroup">
+          <label>Workgroup Name</label>
+          <input type="text" id="workgroupName" value="WORKGROUP" maxlength="15">
+        </div>
+        <div class="form-group section-hidden" id="domainGroup">
+          <label>Domain Name (FQDN)</label>
+          <input type="text" id="domainName" placeholder="corp.example.com">
+        </div>
+        <div class="form-group section-hidden" id="domainUserGroup">
+          <label>Domain Join Username</label>
+          <input type="text" id="domainUser" placeholder="domain\administrator">
+        </div>
+        <div class="form-group section-hidden" id="domainPassGroup">
+          <label>Domain Join Password</label>
+          <input type="password" id="domainPassword" autocomplete="new-password">
+        </div>
+        <div class="form-group section-hidden" id="domainOUGroup">
+          <label>Organizational Unit (OU) <span class="hint">Optional</span></label>
+          <input type="text" id="domainOU" placeholder="OU=Computers,DC=corp,DC=example,DC=com">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 6: OOBE & Privacy -->
+  <div class="step-section section-hidden" id="step-5">
+    <div class="card">
+      <h2>⚙️ OOBE &amp; Setup Options</h2>
+      <p class="subtitle">Out-of-box experience and first-run setup behavior.</p>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Skip OOBE (Out-of-Box Experience)</div>
+          <div class="toggle-desc">Suppress the Windows welcome/setup wizard entirely</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="skipOOBE" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Hide EULA page</div>
+          <div class="toggle-desc">Automatically accept the End User License Agreement</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="hideEULA" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Hide OEM registration page</div>
+          <div class="toggle-desc">Skip the OEM registration/customization screen</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="hideOEMReg" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Skip network setup in OOBE</div>
+          <div class="toggle-desc">Allow setup to proceed without a network connection</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="skipNetworkOOBE" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Skip Microsoft Account prompt</div>
+          <div class="toggle-desc">Force local account creation, bypass Microsoft Account requirement</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="skipMSAccount" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Disable Windows Defender SmartScreen during setup</div>
+          <div class="toggle-desc">Useful for enterprise environments with their own security tools</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="disableSmartScreen"><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Protect your PC (Windows Security)</div>
+          <div class="toggle-desc">Show the "Protect your PC" screen during OOBE</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="protectPC"><span class="slider"></span></label>
+      </div>
+    </div>
+    <div class="card">
+      <h2>🔒 Privacy &amp; Telemetry</h2>
+      <p class="subtitle">Control data collection and privacy settings.</p>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Disable diagnostic data (telemetry)</div>
+          <div class="toggle-desc">Set diagnostics to Security level (minimum)</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="disableTelemetry" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Disable advertising ID</div>
+          <div class="toggle-desc">Prevent apps from using advertising ID for personalization</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="disableAdID" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Disable Cortana</div>
+          <div class="toggle-desc">Disable Cortana assistant</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="disableCortana" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Disable OneDrive auto-start</div>
+          <div class="toggle-desc">Prevent OneDrive from starting automatically</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="disableOneDrive"><span class="slider"></span></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 7: First Run Commands -->
+  <div class="step-section section-hidden" id="step-6">
+    <div class="card">
+      <h2>🚀 First-Run Commands</h2>
+      <p class="subtitle">Commands to run automatically after Windows setup completes.</p>
+      <div class="info-box">ℹ️ Specialize commands run before user logon (as SYSTEM). First-logon commands run on first user logon. Use absolute paths. Order matters.</div>
+
+      <div style="margin-bottom: 20px;">
+        <div class="section-title">Specialize Commands (run as SYSTEM before logon)</div>
+        <div class="commands-list" id="specializeCommandList"></div>
+        <button class="btn btn-secondary" style="margin-top:10px" onclick="addCommand('specialize')">+ Add Command</button>
+      </div>
+
+      <div>
+        <div class="section-title">First Logon Commands (run on first user logon)</div>
+        <div class="commands-list" id="firstLogonCommandList"></div>
+        <button class="btn btn-secondary" style="margin-top:10px" onclick="addCommand('firstlogon')">+ Add Command</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📦 Common Quick-Add Commands</h2>
+      <p class="subtitle">Click to add commonly used setup commands.</p>
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        <button class="btn btn-secondary" onclick="quickAdd('cmd /c powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Set-ExecutionPolicy RemoteSigned -Force&quot;', 'specialize')">Enable PS Scripts</button>
+        <button class="btn btn-secondary" onclick="quickAdd('cmd /c netsh advfirewall set allprofiles state off', 'specialize')">Disable Firewall</button>
+        <button class="btn btn-secondary" onclick="quickAdd('cmd /c powershell -NoProfile -Command &quot;Enable-PSRemoting -Force&quot;', 'specialize')">Enable WinRM</button>
+        <button class="btn btn-secondary" onclick="quickAdd('cmd /c wuauclt /updatenow', 'firstlogon')">Run Windows Update</button>
+        <button class="btn btn-secondary" onclick="quickAdd('cmd /c powershell -NoProfile -Command &quot;Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart&quot;', 'specialize')">Disable SMBv1</button>
+        <button class="btn btn-secondary" onclick="quickAdd('cmd /c reg add &quot;HKLM\\System\\CurrentControlSet\\Control\\Remote Assistance&quot; /v fAllowToGetHelp /t REG_DWORD /d 0 /f', 'specialize')">Disable Remote Assist</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 8: Advanced Options -->
+  <div class="step-section section-hidden" id="step-7">
+    <div class="card">
+      <h2>🔧 Advanced Options</h2>
+      <p class="subtitle">Additional configuration for enterprise deployments.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Organization Name</label>
+          <input type="text" id="orgName" placeholder="Acme Corporation">
+        </div>
+        <div class="form-group">
+          <label>Owner Name</label>
+          <input type="text" id="ownerName" placeholder="IT Department">
+        </div>
+        <div class="form-group">
+          <label>Image Install Source <span class="hint">For WIM/ESD files</span></label>
+          <input type="text" id="imageInstallSource" placeholder="Leave blank for default">
+        </div>
+        <div class="form-group">
+          <label>WDS (Windows Deployment Services)</label>
+          <select id="wdsEnabled">
+            <option value="false">Not using WDS</option>
+            <option value="true">Using WDS</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Enable RDP (Remote Desktop)</div>
+            <div class="toggle-desc">Allow remote desktop connections after setup</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="enableRDP"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Enable .NET Framework 3.5</div>
+            <div class="toggle-desc">Install legacy .NET Framework (required by some apps)</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="enableDotNet35"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Disable UAC (User Account Control)</div>
+            <div class="toggle-desc">Not recommended for most deployments</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="disableUAC"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Show file extensions in Explorer</div>
+            <div class="toggle-desc">Unhide known file extensions in Windows Explorer</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="showExtensions" checked><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Show hidden files in Explorer</div>
+            <div class="toggle-desc">Display hidden files and folders in Explorer</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="showHidden"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Disable Hibernation</div>
+            <div class="toggle-desc">Disable hiberfil.sys to reclaim disk space</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="disableHibernation"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Set High Performance power plan</div>
+            <div class="toggle-desc">Apply High Performance power scheme</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="highPerformance"><span class="slider"></span></label>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <div class="section-title">Driver Paths</div>
+        <div class="info-box">ℹ️ Enter UNC or local paths to driver folders that setup should scan. These must be accessible during Windows PE.</div>
+        <div class="tag-input-container" onclick="this.querySelector('input').focus()">
+          <div id="driverTags"></div>
+          <input class="tag-input" id="driverTagInput" placeholder="e.g. X:\Drivers\NIC — press Enter to add" onkeydown="addDriverTag(event)">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 9: Review & Generate -->
+  <div class="step-section section-hidden" id="step-8">
+    <div class="card">
+      <h2>✅ Review &amp; Generate XML</h2>
+      <p class="subtitle">Review your configuration and generate the autounattend.xml file.</p>
+      <div id="reviewSummary"></div>
+    </div>
+    <div class="card" id="xmlOutputCard" style="display:none">
+      <h2>📄 Generated autounattend.xml</h2>
+      <p class="subtitle">Copy this content into a file named <code>autounattend.xml</code> and place it in the root of your installation media.</p>
+      <pre class="xml-output" id="xmlOutput"></pre>
+      <div class="output-actions">
+        <button class="btn btn-primary btn-lg" onclick="downloadXML()">⬇ Download autounattend.xml</button>
+        <button class="btn btn-secondary" onclick="copyXML()">📋 Copy to Clipboard</button>
+      </div>
+    </div>
+    <div class="nav-buttons">
+      <button class="btn btn-secondary" onclick="prevStep()">← Back</button>
+      <button class="btn btn-primary btn-lg" onclick="generateXML()">⚡ Generate XML</button>
+    </div>
+  </div>
+
+  <!-- Nav buttons (all steps except last) -->
+  <div id="navButtons" class="nav-buttons">
+    <button class="btn btn-secondary" onclick="prevStep()" id="prevBtn" style="visibility:hidden">← Back</button>
+    <button class="btn btn-primary" onclick="nextStep()" id="nextBtn">Next →</button>
+  </div>
+</div>
+
+<div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+
+<script>
+const STEPS = [
+  'Edition', 'Language', 'Disk', 'Accounts', 'Network',
+  'OOBE & Privacy', 'Commands', 'Advanced', 'Generate'
+];
+let currentStep = 0;
+let localUsers = [];
+let specializeCommands = [];
+let firstLogonCommands = [];
+let driverPaths = [];
+let customPartitions = [
+  { type: 'EFI', size: 260, fs: 'FAT32', label: 'System' },
+  { type: 'MSR', size: 16, fs: '', label: 'MSR' },
+  { type: 'Windows', size: 0, fs: 'NTFS', label: 'Windows' },
+  { type: 'Recovery', size: 500, fs: 'NTFS', label: 'Recovery' }
+];
+
+const EDITIONS = {
+  win11: [
+    { value: 'Windows 11 Home', label: 'Home' },
+    { value: 'Windows 11 Pro', label: 'Pro' },
+    { value: 'Windows 11 Pro Education', label: 'Pro Education' },
+    { value: 'Windows 11 Education', label: 'Education' },
+    { value: 'Windows 11 Enterprise', label: 'Enterprise' },
+    { value: 'Windows 11 Enterprise LTSC 2024', label: 'Enterprise LTSC 2024' },
+  ],
+  win10: [
+    { value: 'Windows 10 Home', label: 'Home' },
+    { value: 'Windows 10 Pro', label: 'Pro' },
+    { value: 'Windows 10 Pro Education', label: 'Pro Education' },
+    { value: 'Windows 10 Education', label: 'Education' },
+    { value: 'Windows 10 Enterprise', label: 'Enterprise' },
+    { value: 'Windows 10 Enterprise LTSC 2021', label: 'Enterprise LTSC 2021' },
+    { value: 'Windows 10 Enterprise LTSC 2019', label: 'Enterprise LTSC 2019' },
+  ],
+  ws2025: [
+    { value: 'Windows Server 2025 Standard', label: 'Standard' },
+    { value: 'Windows Server 2025 Standard (Desktop Experience)', label: 'Standard (Desktop Experience)' },
+    { value: 'Windows Server 2025 Datacenter', label: 'Datacenter' },
+    { value: 'Windows Server 2025 Datacenter (Desktop Experience)', label: 'Datacenter (Desktop Experience)' },
+  ],
+  ws2022: [
+    { value: 'Windows Server 2022 Standard', label: 'Standard (Core)' },
+    { value: 'Windows Server 2022 Standard (Desktop Experience)', label: 'Standard (Desktop Experience)' },
+    { value: 'Windows Server 2022 Datacenter', label: 'Datacenter (Core)' },
+    { value: 'Windows Server 2022 Datacenter (Desktop Experience)', label: 'Datacenter (Desktop Experience)' },
+  ],
+  ws2019: [
+    { value: 'Windows Server 2019 Standard', label: 'Standard (Core)' },
+    { value: 'Windows Server 2019 Standard (Desktop Experience)', label: 'Standard (Desktop Experience)' },
+    { value: 'Windows Server 2019 Datacenter', label: 'Datacenter (Core)' },
+    { value: 'Windows Server 2019 Datacenter (Desktop Experience)', label: 'Datacenter (Desktop Experience)' },
+  ],
+  ws2016: [
+    { value: 'Windows Server 2016 Standard', label: 'Standard (Core)' },
+    { value: 'Windows Server 2016 Standard (Desktop Experience)', label: 'Standard (Desktop Experience)' },
+    { value: 'Windows Server 2016 Datacenter', label: 'Datacenter (Core)' },
+    { value: 'Windows Server 2016 Datacenter (Desktop Experience)', label: 'Datacenter (Desktop Experience)' },
+  ],
+};
+
+function init() {
+  onWinVersionChange();
+  renderStepIndicator();
+  renderStep();
+}
+
+function onWinVersionChange() {
+  const ver = document.getElementById('winVersion').value;
+  const edSel = document.getElementById('winEdition');
+  edSel.innerHTML = '';
+  (EDITIONS[ver] || []).forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.value;
+    opt.textContent = e.label;
+    edSel.appendChild(opt);
+  });
+}
+
+function formatProductKey(input) {
+  let val = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  let formatted = val.match(/.{1,5}/g);
+  input.value = formatted ? formatted.join('-').substring(0, 29) : val;
+}
+
+function renderStep() {
+  document.querySelectorAll('.step-section').forEach((el, i) => {
+    el.classList.toggle('section-hidden', i !== currentStep);
+  });
+  const isLast = currentStep === STEPS.length - 1;
+  document.getElementById('navButtons').style.display = isLast ? 'none' : 'flex';
+  document.getElementById('prevBtn').style.visibility = currentStep === 0 ? 'hidden' : 'visible';
+  const pct = Math.round((currentStep / (STEPS.length - 1)) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  renderStepIndicator();
+  if (isLast) renderReview();
+}
+
+function renderStepIndicator() {
+  const container = document.getElementById('stepIndicator');
+  container.innerHTML = '';
+  STEPS.forEach((name, i) => {
+    const pill = document.createElement('button');
+    pill.className = 'step-pill' + (i === currentStep ? ' active' : i < currentStep ? ' done' : '');
+    pill.textContent = (i < currentStep ? '✓ ' : '') + name;
+    pill.onclick = () => { if (i <= currentStep) { currentStep = i; renderStep(); } };
+    container.appendChild(pill);
+  });
+}
+
+function nextStep() {
+  if (currentStep < STEPS.length - 1) { currentStep++; renderStep(); window.scrollTo(0,0); }
+}
+function prevStep() {
+  if (currentStep > 0) { currentStep--; renderStep(); window.scrollTo(0,0); }
+}
+
+function onDiskLayoutChange() {
+  const layout = document.getElementById('diskLayout').value;
+  document.getElementById('customPartitionArea').classList.toggle('section-hidden', layout !== 'custom');
+  if (layout === 'custom') renderPartitions();
+}
+
+function renderPartitions() {
+  const list = document.getElementById('partitionList');
+  list.innerHTML = '';
+  customPartitions.forEach((p, i) => {
+    const row = document.createElement('div');
+    row.className = 'partition-row';
+    const typeColors = { EFI:'badge-system', MSR:'badge-system', Windows:'badge-primary', Data:'badge-data', Recovery:'badge-recovery' };
+    row.innerHTML = `
+      <span class="partition-type-badge ${typeColors[p.type] || 'badge-data'}">${p.type}</span>
+      <div class="form-group" style="margin:0"><input type="text" value="${escHA(p.label)}" placeholder="Label" style="margin:0" oninput="customPartitions[${i}].label=this.value"></div>
+      <div class="form-group" style="margin:0"><input type="number" value="${p.size}" placeholder="Size MB (0=rest)" style="margin:0" oninput="customPartitions[${i}].size=+this.value"></div>
+      <select style="margin:0" onchange="customPartitions[${i}].fs=this.value">
+        ${['NTFS','FAT32','','ReFS'].map(fs=>`<option value="${fs}" ${p.fs===fs?'selected':''}>${fs||'(none/MSR)'}</option>`).join('')}
+      </select>
+      <button class="btn btn-secondary" style="padding:6px 10px;font-size:0.8rem" onclick="removePartition(${i})">✕</button>`;
+    list.appendChild(row);
+  });
+}
+
+function addPartition() { customPartitions.push({ type:'Data', size:0, fs:'NTFS', label:'Data' }); renderPartitions(); }
+function removePartition(i) { customPartitions.splice(i,1); renderPartitions(); }
+
+function onAdminModeChange() {
+  document.getElementById('adminPasswordGroup').style.display =
+    document.getElementById('adminAccountMode').value === 'disable' ? 'none' : '';
+}
+
+function addLocalUser() { localUsers.push({ name:'', password:'', group:'Administrators' }); renderLocalUsers(); }
+function removeLocalUser(i) { localUsers.splice(i,1); renderLocalUsers(); }
+
+function renderLocalUsers() {
+  const list = document.getElementById('localUserList');
+  list.innerHTML = '';
+  localUsers.forEach((u, i) => {
+    const row = document.createElement('div');
+    row.className = 'command-row';
+    row.style.gridTemplateColumns = '1fr 1fr 1fr auto';
+    row.innerHTML = `
+      <input type="text" value="${escHA(u.name)}" placeholder="Username" oninput="localUsers[${i}].name=this.value">
+      <input type="password" value="${escHA(u.password)}" placeholder="Password" autocomplete="new-password" oninput="localUsers[${i}].password=this.value">
+      <select onchange="localUsers[${i}].group=this.value">
+        <option value="Administrators" ${u.group==='Administrators'?'selected':''}>Administrators</option>
+        <option value="Users" ${u.group==='Users'?'selected':''}>Users</option>
+        <option value="Power Users" ${u.group==='Power Users'?'selected':''}>Power Users</option>
+      </select>
+      <button class="btn btn-secondary" style="padding:6px 10px" onclick="removeLocalUser(${i})">✕</button>`;
+    list.appendChild(row);
+  });
+  if (!localUsers.length) list.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0">No local users configured.</p>';
+}
+
+function onNetworkTypeChange() {
+  const isDomain = document.getElementById('networkType').value === 'domain';
+  ['domainGroup','domainUserGroup','domainPassGroup','domainOUGroup'].forEach(id =>
+    document.getElementById(id).classList.toggle('section-hidden', !isDomain));
+  document.getElementById('workgroupGroup').classList.toggle('section-hidden', isDomain);
+}
+
+function addCommand(type) {
+  if (type === 'specialize') specializeCommands.push('');
+  else firstLogonCommands.push('');
+  renderCommands(type);
+}
+function removeCommand(type, i) {
+  if (type === 'specialize') specializeCommands.splice(i,1);
+  else firstLogonCommands.splice(i,1);
+  renderCommands(type);
+}
+function quickAdd(cmd, type) {
+  if (type === 'specialize') specializeCommands.push(cmd);
+  else firstLogonCommands.push(cmd);
+  renderCommands(type);
+}
+
+function renderCommands(type) {
+  const arr = type === 'specialize' ? specializeCommands : firstLogonCommands;
+  const listId = type === 'specialize' ? 'specializeCommandList' : 'firstLogonCommandList';
+  const list = document.getElementById(listId);
+  list.innerHTML = '';
+  arr.forEach((cmd, i) => {
+    const row = document.createElement('div');
+    row.className = 'command-row';
+    row.innerHTML = `
+      <span class="command-order">${i+1}</span>
+      <input type="text" value="${escHA(cmd)}" placeholder="e.g. cmd /c your-script.bat" oninput="${type==='specialize'?'specializeCommands':'firstLogonCommands'}[${i}]=this.value">
+      <button class="btn btn-secondary" style="padding:6px 10px" onclick="removeCommand('${type}',${i})">✕</button>`;
+    list.appendChild(row);
+  });
+  if (!arr.length) list.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0">No commands configured.</p>';
+}
+
+function addDriverTag(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const val = e.target.value.trim();
+    if (val && !driverPaths.includes(val)) { driverPaths.push(val); renderDriverTags(); e.target.value=''; }
+  }
+}
+function removeDriverTag(i) { driverPaths.splice(i,1); renderDriverTags(); }
+function renderDriverTags() {
+  const c = document.getElementById('driverTags');
+  c.innerHTML = '';
+  driverPaths.forEach((p,i) => {
+    const t = document.createElement('span');
+    t.className = 'tag';
+    t.innerHTML = `${esc(p)} <span class="tag-remove" onclick="removeDriverTag(${i})">×</span>`;
+    c.appendChild(t);
+  });
+}
+
+function renderReview() {
+  const G = id => document.getElementById(id);
+  const v = id => G(id) ? G(id).value : '';
+  const ch = id => G(id) && G(id).checked;
+  const rows = [
+    ['Windows Version', v('winVersion')], ['Edition', v('winEdition')], ['Architecture', v('winArch')],
+    ['Firmware', v('firmwareType')], ['Product Key', v('productKey')||'(none)'],
+    ['UI Language', v('uiLanguage')], ['Time Zone', v('timeZone')], ['Keyboard', v('keyboardLayout')],
+    ['Disk Number', v('diskNumber')], ['Disk Layout', v('diskLayout')],
+    ['Computer Name', v('computerName')||'*'],
+    ['Network', v('networkType')==='domain' ? 'Domain: '+v('domainName') : 'Workgroup: '+v('workgroupName')],
+    ['Admin Account', v('adminAccountMode')], ['Local Users', localUsers.length ? localUsers.map(u=>u.name).join(', ') : 'None'],
+    ['Auto-Logon', v('autoLogonUser')||'Disabled'], ['Skip OOBE', ch('skipOOBE')?'Yes':'No'],
+    ['Disable Telemetry', ch('disableTelemetry')?'Yes':'No'],
+    ['Specialize Cmds', specializeCommands.filter(Boolean).length],
+    ['FirstLogon Cmds', firstLogonCommands.filter(Boolean).length],
+    ['Enable RDP', ch('enableRDP')?'Yes':'No'],
+  ];
+  let html = '<div class="form-grid">';
+  rows.forEach(([k,v]) => {
+    html += `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:0.75rem;color:var(--text-muted)">${k}</div>
+      <div style="font-size:0.88rem;margin-top:2px">${esc(String(v))}</div></div>`;
+  });
+  html += '</div>';
+  document.getElementById('reviewSummary').innerHTML = html;
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escHA(s) { return esc(s).replace(/"/g,'&quot;'); }
+function escXml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
+
+function generateXML() {
+  const G = id => document.getElementById(id);
+  const val = id => G(id) ? G(id).value.trim() : '';
+  const ch = id => G(id) && G(id).checked;
+
+  const arch = val('winArch');
+  const firmware = val('firmwareType');
+  const productKey = val('productKey').replace(/-/g,'').replace(/(.{5})/g,'$1-').slice(0,-1);
+  const uiLang = val('uiLanguage');
+  const sysLocale = val('systemLocale');
+  const keyboard = val('keyboardLayout');
+  const tz = val('timeZone');
+  const diskNum = val('diskNumber')||'0';
+  const diskLayout = val('diskLayout');
+  const winPartSize = parseInt(val('winPartSize'))||0;
+  const winDriveLetter = val('winDriveLetter')||'C';
+  const adminMode = val('adminAccountMode');
+  const adminPwd = val('adminPassword');
+  const autoLogonUser = val('autoLogonUser');
+  const autoLogonPwd = val('autoLogonPassword');
+  const autoLogonCount = val('autoLogonCount')||'1';
+  const computerName = val('computerName')||'*';
+  const networkType = val('networkType');
+  const workgroup = val('workgroupName')||'WORKGROUP';
+  const domainName = val('domainName');
+  const domainUser = val('domainUser');
+  const domainPwd = val('domainPassword');
+  const domainOU = val('domainOU');
+  const orgName = val('orgName');
+  const ownerName = val('ownerName');
+  const isUEFI = firmware === 'uefi';
+
+  // Disk config builder
+  function buildDisk(layout) {
+    let create = '', modify = '';
+    if (layout === 'simple') {
+      if (isUEFI) {
+        create = `<CreatePartition wcm:action="add"><Order>1</Order><Type>EFI</Type><Size>260</Size></CreatePartition>
+              <CreatePartition wcm:action="add"><Order>2</Order><Type>MSR</Type><Size>16</Size></CreatePartition>
+              <CreatePartition wcm:action="add"><Order>3</Order><Type>Primary</Type>${winPartSize>0?`<Size>${winPartSize}</Size>`:'<Extend>true</Extend>'}</CreatePartition>`;
+        modify = `<ModifyPartition wcm:action="add"><Order>1</Order><PartitionID>1</PartitionID><Label>System</Label><Format>FAT32</Format></ModifyPartition>
+              <ModifyPartition wcm:action="add"><Order>2</Order><PartitionID>3</PartitionID><Label>Windows</Label><Format>NTFS</Format><Letter>${winDriveLetter}</Letter></ModifyPartition>`;
+      } else {
+        create = `<CreatePartition wcm:action="add"><Order>1</Order><Type>Primary</Type><Size>350</Size></CreatePartition>
+              <CreatePartition wcm:action="add"><Order>2</Order><Type>Primary</Type>${winPartSize>0?`<Size>${winPartSize}</Size>`:'<Extend>true</Extend>'}</CreatePartition>`;
+        modify = `<ModifyPartition wcm:action="add"><Order>1</Order><PartitionID>1</PartitionID><Label>System Reserved</Label><Format>NTFS</Format><Active>true</Active></ModifyPartition>
+              <ModifyPartition wcm:action="add"><Order>2</Order><PartitionID>2</PartitionID><Label>Windows</Label><Format>NTFS</Format><Letter>${winDriveLetter}</Letter></ModifyPartition>`;
+      }
+    } else if (layout === 'recommended') {
+      if (isUEFI) {
+        create = `<CreatePartition wcm:action="add"><Order>1</Order><Type>EFI</Type><Size>260</Size></CreatePartition>
+              <CreatePartition wcm:action="add"><Order>2</Order><Type>MSR</Type><Size>16</Size></CreatePartition>
+              <CreatePartition wcm:action="add"><Order>3</Order><Type>Primary</Type>${winPartSize>0?`<Size>${winPartSize}</Size>`:'<Extend>false</Extend>'}</CreatePartition>
+              <CreatePartition wcm:action="add"><Order>4</Order><Type>Primary</Type>${winPartSize>0?'<Extend>true</Extend>':'<Size>500</Size>'}</CreatePartition>`;
+        modify = `<ModifyPartition wcm:action="add"><Order>1</Order><PartitionID>1</PartitionID><Label>System</Label><Format>FAT32</Format></ModifyPartition>
+              <ModifyPartition wcm:action="add"><Order>2</Order><PartitionID>3</PartitionID><Label>Windows</Label><Format>NTFS</Format><Letter>${winDriveLetter}</Letter></ModifyPartition>
+              <ModifyPartition wcm:action="add"><Order>3</Order><PartitionID>4</PartitionID><Label>Recovery</Label><Format>NTFS</Format><TypeID>de94bba4-06d1-4d40-a16a-bfd50179d6ac</TypeID></ModifyPartition>`;
+      } else {
+        create = `<CreatePartition wcm:action="add"><Order>1</Order><Type>Primary</Type><Size>350</Size></CreatePartition>
+              <CreatePartition wcm:action="add"><Order>2</Order><Type>Primary</Type>${winPartSize>0?`<Size>${winPartSize}</Size>`:'<Extend>false</Extend>'}</CreatePartition>
+              <CreatePartition wcm:action="add"><Order>3</Order><Type>Primary</Type>${winPartSize>0?'<Extend>true</Extend>':'<Size>500</Size>'}</CreatePartition>`;
+        modify = `<ModifyPartition wcm:action="add"><Order>1</Order><PartitionID>1</PartitionID><Label>System Reserved</Label><Format>NTFS</Format><Active>true</Active></ModifyPartition>
+              <ModifyPartition wcm:action="add"><Order>2</Order><PartitionID>2</PartitionID><Label>Windows</Label><Format>NTFS</Format><Letter>${winDriveLetter}</Letter></ModifyPartition>
+              <ModifyPartition wcm:action="add"><Order>3</Order><PartitionID>3</PartitionID><Label>Recovery</Label><Format>NTFS</Format></ModifyPartition>`;
+      }
+    } else {
+      customPartitions.forEach((p, i) => {
+        const order = i+1;
+        const pt = p.type==='EFI'?'EFI':p.type==='MSR'?'MSR':'Primary';
+        const sizeEl = p.size>0?`<Size>${p.size}</Size>`:'<Extend>true</Extend>';
+        create += `<CreatePartition wcm:action="add"><Order>${order}</Order><Type>${pt}</Type>${sizeEl}</CreatePartition>\n              `;
+        if (p.type !== 'MSR') {
+          const letter = p.type==='Windows' ? `<Letter>${winDriveLetter}</Letter>` : '';
+          modify += `<ModifyPartition wcm:action="add"><Order>${order}</Order><PartitionID>${order}</PartitionID><Label>${escXml(p.label)}</Label>${p.fs?`<Format>${p.fs}</Format>`:''}${letter}</ModifyPartition>\n              `;
+        }
+      });
+    }
+    return `<CreatePartitions>\n              ${create}\n            </CreatePartitions>\n            <ModifyPartitions>\n              ${modify}\n            </ModifyPartitions>`;
+  }
+
+  const driverPathsXml = driverPaths.length ? `<DriverPaths>${driverPaths.map((p,i) =>
+    `\n          <PathAndCredentials wcm:action="add" wcm:keyValue="${i+1}"><Path>${escXml(p)}</Path></PathAndCredentials>`).join('')}\n      </DriverPaths>` : '';
+
+  const localAccountsXml = localUsers.filter(u=>u.name).length ? `
+        <UserAccounts>
+          <LocalAccounts>${localUsers.filter(u=>u.name).map(u => `
+            <LocalAccount wcm:action="add">
+              <Password><Value>${escXml(u.password)}</Value><PlainText>true</PlainText></Password>
+              <DisplayName>${escXml(u.name)}</DisplayName>
+              <Group>${escXml(u.group)}</Group>
+              <Name>${escXml(u.name)}</Name>
+            </LocalAccount>`).join('')}
+          </LocalAccounts>
+        </UserAccounts>` : '';
+
+  const adminXml = adminMode !== 'disable' ? `
+        <UserAccounts>
+          <AdministratorPassword>
+            <Value>${escXml(adminPwd)}</Value>
+            <PlainText>true</PlainText>
+          </AdministratorPassword>
+        </UserAccounts>` : '';
+
+  const autoLogonXml = autoLogonUser ? `
+        <AutoLogon>
+          <Password><Value>${escXml(autoLogonPwd)}</Value><PlainText>true</PlainText></Password>
+          <Enabled>true</Enabled>
+          <LogonCount>${escXml(autoLogonCount)}</LogonCount>
+          <Username>${escXml(autoLogonUser)}</Username>
+        </AutoLogon>` : '';
+
+  const joinXml = networkType === 'domain' && domainName ?
+    `<JoinDomain>${escXml(domainName)}</JoinDomain>
+        ${domainOU?`<MachineObjectOU>${escXml(domainOU)}</MachineObjectOU>`:''}
+        <Credentials><Domain>${escXml(domainName)}</Domain><Password>${escXml(domainPwd)}</Password><Username>${escXml(domainUser)}</Username></Credentials>` :
+    `<JoinWorkgroup>${escXml(workgroup)}</JoinWorkgroup>`;
+
+  // Build all specialize commands
+  let allSpecCmds = [...specializeCommands.filter(Boolean)];
+  if (ch('enableRDP')) { allSpecCmds.push('cmd /c reg add "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f'); allSpecCmds.push('cmd /c netsh advfirewall firewall set rule group="remote desktop" new enable=Yes'); }
+  if (ch('disableTelemetry')) allSpecCmds.push('cmd /c reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection" /v AllowTelemetry /t REG_DWORD /d 0 /f');
+  if (ch('disableAdID')) allSpecCmds.push('cmd /c reg add "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\AdvertisingInfo" /v Enabled /t REG_DWORD /d 0 /f');
+  if (ch('disableCortana')) allSpecCmds.push('cmd /c reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search" /v AllowCortana /t REG_DWORD /d 0 /f');
+  if (ch('disableOneDrive')) allSpecCmds.push('cmd /c reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\OneDrive" /v DisableFileSyncNGSC /t REG_DWORD /d 1 /f');
+  if (ch('disableUAC')) allSpecCmds.push('cmd /c reg add "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v EnableLUA /t REG_DWORD /d 0 /f');
+  if (ch('showExtensions')) allSpecCmds.push('cmd /c reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced" /v HideFileExt /t REG_DWORD /d 0 /f');
+  if (ch('showHidden')) allSpecCmds.push('cmd /c reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced" /v Hidden /t REG_DWORD /d 1 /f');
+  if (ch('disableHibernation')) allSpecCmds.push('cmd /c powercfg /hibernate off');
+  if (ch('highPerformance')) allSpecCmds.push('cmd /c powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c');
+  if (ch('enableDotNet35')) allSpecCmds.push('cmd /c dism /online /enable-feature /featurename:NetFx3 /all /norestart');
+  if (ch('disableSmartScreen')) allSpecCmds.push('cmd /c reg add "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer" /v SmartScreenEnabled /t REG_SZ /d "Off" /f');
+
+  const specCmdsXml = allSpecCmds.length ? `
+      <RunSynchronous>${allSpecCmds.map((cmd,i) => `
+        <RunSynchronousCommand wcm:action="add">
+          <Order>${i+1}</Order>
+          <Path>${escXml(cmd)}</Path>
+          <WillReboot>Never</WillReboot>
+        </RunSynchronousCommand>`).join('')}
+      </RunSynchronous>` : '';
+
+  const validFirstLogon = firstLogonCommands.filter(Boolean);
+  const firstLogonXml = validFirstLogon.length ? `
+      <FirstLogonCommands>${validFirstLogon.map((cmd,i) => `
+        <SynchronousCommand wcm:action="add">
+          <Order>${i+1}</Order>
+          <CommandLine>${escXml(cmd)}</CommandLine>
+          <RequiresUserInput>false</RequiresUserInput>
+        </SynchronousCommand>`).join('')}
+      </FirstLogonCommands>` : '';
+
+  const oobeXml = `
+      <OOBE>
+        <HideEULAPage>${ch('hideEULA')}</HideEULAPage>
+        <HideOEMRegistrationScreen>${ch('hideOEMReg')}</HideOEMRegistrationScreen>
+        <HideOnlineAccountScreens>${ch('skipMSAccount')}</HideOnlineAccountScreens>
+        <HideWirelessSetupInOOBE>${ch('skipNetworkOOBE')}</HideWirelessSetupInOOBE>
+        <NetworkLocation>Work</NetworkLocation>
+        <ProtectYourPC>${ch('protectPC')?1:3}</ProtectYourPC>
+        <SkipMachineOOBE>${ch('skipOOBE')}</SkipMachineOOBE>
+        <SkipUserOOBE>${ch('skipOOBE')}</SkipUserOOBE>
+      </OOBE>`;
+
+  const pkXml = `
+      <UserData>
+        ${productKey ? `<ProductKey><Key>${escXml(productKey)}</Key><WillShowUI>Never</WillShowUI></ProductKey>` : ''}
+        <AcceptEula>true</AcceptEula>
+        <FullName>${escXml(ownerName||'User')}</FullName>
+        <Organization>${escXml(orgName||'')}</Organization>
+      </UserData>`;
+
+  const imageSource = val('imageInstallSource');
+  const imageInstallXml = imageSource ? `
+      <ImageInstall>
+        <OSImage>
+          <InstallFrom><Path>${escXml(imageSource)}</Path></InstallFrom>
+          <WillShowUI>Never</WillShowUI>
+        </OSImage>
+      </ImageInstall>` : '';
+
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated by Hatch — https://github.com/pages -->
+<!-- Generated: ${new Date().toISOString()} -->
+<!-- No data was transmitted. All generation happened locally in your browser. -->
+<unattend xmlns="urn:schemas-microsoft-com:unattend"
+          xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       PASS 1: windowsPE — Disk partitioning and OS image selection
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <settings pass="windowsPE">
+    <component name="Microsoft-Windows-International-Core-WinPE"
+               processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">
+      <SetupUILanguage>
+        <UILanguage>${escXml(uiLang)}</UILanguage>
+      </SetupUILanguage>
+      <InputLocale>${escXml(keyboard)}</InputLocale>
+      <SystemLocale>${escXml(sysLocale)}</SystemLocale>
+      <UILanguage>${escXml(uiLang)}</UILanguage>
+      <UILanguageFallback>en-US</UILanguageFallback>
+      <UserLocale>${escXml(uiLang)}</UserLocale>
+    </component>
+    <component name="Microsoft-Windows-Setup"
+               processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">${imageInstallXml}
+      <DiskConfiguration>
+        <Disk wcm:action="add">
+          <DiskID>${diskNum}</DiskID>
+          <WillWipeDisk>true</WillWipeDisk>
+          ${buildDisk(diskLayout)}
+        </Disk>
+      </DiskConfiguration>${pkXml}
+      ${driverPathsXml}
+    </component>
+  </settings>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       PASS 4: specialize — Machine-specific settings applied after OS copy
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <settings pass="specialize">
+    <component name="Microsoft-Windows-International-Core"
+               processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">
+      <InputLocale>${escXml(keyboard)}</InputLocale>
+      <SystemLocale>${escXml(sysLocale)}</SystemLocale>
+      <UILanguage>${escXml(uiLang)}</UILanguage>
+      <UserLocale>${escXml(uiLang)}</UserLocale>
+    </component>
+    <component name="Microsoft-Windows-Shell-Setup"
+               processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">
+      <ComputerName>${escXml(computerName)}</ComputerName>
+      <TimeZone>${escXml(tz)}</TimeZone>
+      ${orgName ? `<RegisteredOrganization>${escXml(orgName)}</RegisteredOrganization>` : ''}
+      ${ownerName ? `<RegisteredOwner>${escXml(ownerName)}</RegisteredOwner>` : ''}${specCmdsXml}
+    </component>
+    <component name="Microsoft-Windows-UnattendedJoin"
+               processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">
+      <Identification>
+        ${joinXml}
+      </Identification>
+    </component>
+  </settings>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       PASS 7: oobeSystem — OOBE / user account / auto-logon configuration
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-Shell-Setup"
+               processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">${oobeXml}${autoLogonXml}
+      ${localAccountsXml}
+      ${adminMode !== 'disable' ? adminXml : ''}${firstLogonXml}
+    </component>
+  </settings>
+
+</unattend>`;
+
+  document.getElementById('xmlOutput').textContent = xml;
+  document.getElementById('xmlOutputCard').style.display = '';
+  window.generatedXML = xml;
+  window.scrollTo(0, document.getElementById('xmlOutputCard').offsetTop - 80);
+}
+
+function downloadXML() {
+  if (!window.generatedXML) return;
+  const blob = new Blob([window.generatedXML], { type: 'application/xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'autounattend.xml';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function copyXML() {
+  if (!window.generatedXML) return;
+  navigator.clipboard.writeText(window.generatedXML).then(() => {
+    const fb = document.getElementById('copyFeedback');
+    fb.classList.add('show');
+    setTimeout(() => fb.classList.remove('show'), 2000);
+  });
+}
+
+init();
+renderLocalUsers();
+renderCommands('specialize');
+renderCommands('firstlogon');
+</script>
+</body>
+</html>

@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hatch — Cloud-Init Config Generator</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface2: #0f3460;
+    --accent: #e8720c;
+    --accent-hover: #c9620a;
+    --text: #e8e8e8;
+    --text-muted: #9a9aaa;
+    --border: #2a2a4a;
+    --success: #107c10;
+    --error: #c50f1f;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+  header {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+header h1 { font-size: 1.2rem; font-weight: 600; }
+  header p { font-size: 0.8rem; color: var(--text-muted); }
+  .privacy-badge {
+    margin-left: auto;
+    background: #0a3020;
+    border: 1px solid #107c10;
+    color: #4caf50;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+  .home-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.8rem;
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    white-space: nowrap;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .home-link:hover { color: var(--text); border-color: var(--accent); }
+  .hatch-wordmark { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #facc15; margin-bottom: 1px; }
+  .container { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+  .progress-bar { background: var(--surface); border: 1px solid var(--border); border-radius: 30px; height: 8px; margin-bottom: 24px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 30px; transition: width 0.3s ease; }
+  .step-indicator { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+  .step-pill {
+    padding: 4px 10px; border-radius: 20px; font-size: 0.72rem; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); transition: all 0.2s;
+  }
+  .step-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .step-pill.done { background: #0a3020; border-color: #107c10; color: #4caf50; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
+  .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .card .subtitle { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 20px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 0.82rem; font-weight: 500; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+  label .hint { font-weight: 400; font-size: 0.75rem; color: var(--text-muted); margin-left: auto; }
+  label .req { color: var(--error); }
+  input[type="text"], input[type="password"], input[type="number"], select, textarea {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text); padding: 9px 12px; font-size: 0.88rem; font-family: inherit; width: 100%;
+    transition: border-color 0.2s; outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: #1a1a2e; }
+  textarea { resize: vertical; min-height: 80px; }
+  .mono { font-family: 'Cascadia Code','Consolas','Courier New',monospace; font-size: 0.82rem; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-label { font-size: 0.88rem; }
+  .toggle-desc { font-size: 0.76rem; color: var(--text-muted); margin-top: 2px; }
+  .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; margin-left: 12px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; top:0;left:0;right:0;bottom:0; background: var(--border); border-radius: 24px; transition: 0.2s; }
+  .slider:before { content:''; position:absolute; height:18px;width:18px;left:3px;bottom:3px; background:#fff; border-radius:50%; transition:0.2s; }
+  input:checked + .slider { background: var(--accent); }
+  input:checked + .slider:before { transform: translateX(20px); }
+  .tag-input-container {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 6px 8px; display: flex; flex-wrap: wrap; gap: 6px; cursor: text;
+    min-height: 42px; align-items: center; transition: border-color 0.2s;
+  }
+  .tag-input-container:focus-within { border-color: var(--accent); }
+  .ci-tag { background: var(--surface2); border: 1px solid var(--accent); border-radius: 4px; padding: 2px 8px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; }
+  .tag-remove { cursor: pointer; color: var(--text-muted); font-size: 1rem; line-height: 1; }
+  .tag-remove:hover { color: var(--error); }
+  .tag-input { border: none; background: transparent; color: var(--text); font-size: 0.88rem; outline: none; flex: 1; min-width: 100px; padding: 2px 4px; }
+  .btn { padding: 10px 20px; border-radius: var(--radius); border: none; font-size: 0.88rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); }
+  .btn-lg { padding: 13px 28px; font-size: 0.95rem; }
+  .btn-sm { padding: 5px 12px; font-size: 0.78rem; }
+  .nav-buttons { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; gap: 12px; }
+  .section-hidden { display: none; }
+  .section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .info-box { background: rgba(232,114,12,0.07); border: 1px solid rgba(232,114,12,0.3); border-radius: var(--radius); padding: 12px 16px; font-size: 0.82rem; color: #f0a060; margin-bottom: 16px; }
+  .warn-box { background: rgba(197,15,31,0.08); border: 1px solid rgba(197,15,31,0.3); border-radius: var(--radius); padding: 12px 16px; font-size: 0.82rem; color: #f07070; margin-bottom: 16px; }
+  .blue-box { background: rgba(0,120,212,0.08); border: 1px solid rgba(0,120,212,0.3); border-radius: var(--radius); padding: 12px 16px; font-size: 0.82rem; color: #79b8e8; margin-bottom: 16px; }
+  .dynamic-list { display: flex; flex-direction: column; gap: 10px; }
+  .dynamic-row {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px; position: relative;
+  }
+  .dynamic-row-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .dynamic-row-title { font-size: 0.82rem; font-weight: 600; color: var(--text-muted); }
+  .yaml-output {
+    background: #0d1117; border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px; font-family: 'Cascadia Code','Consolas','Courier New',monospace; font-size: 0.8rem;
+    line-height: 1.6; white-space: pre; overflow-x: auto; max-height: 600px; overflow-y: auto;
+    color: #e6edf3; tab-size: 2;
+  }
+  .output-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+  .copy-feedback { position: fixed; bottom: 24px; right: 24px; background: #107c10; color: #fff; padding: 10px 20px; border-radius: var(--radius); font-size: 0.88rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 1000; }
+  .copy-feedback.show { opacity: 1; }
+  .user-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .user-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .user-card-name { font-weight: 600; font-size: 0.9rem; color: var(--accent); }
+  .badge { display: inline-block; font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; margin-left: 8px; }
+  .badge-admin { background: rgba(232,114,12,0.15); color: var(--accent); border: 1px solid rgba(232,114,12,0.3); }
+  .badge-user { background: rgba(0,120,212,0.15); color: #79b8e8; border: 1px solid rgba(0,120,212,0.3); }
+  .iface-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .quick-pkg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .review-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0; }
+  .review-item { padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .review-item-key { font-size: 0.72rem; color: var(--text-muted); }
+  .review-item-val { font-size: 0.88rem; margin-top: 2px; word-break: break-all; }
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="ciT" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#32325e"/><stop offset="100%" stop-color="#1c1c38"/>
+      </linearGradient>
+      <linearGradient id="ciB" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#26263e"/><stop offset="100%" stop-color="#141428"/>
+      </linearGradient>
+      <radialGradient id="ciG" cx="50%" cy="50%" r="60%">
+        <stop offset="0%" stop-color="#ffcc70"/><stop offset="100%" stop-color="#ff8020" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <path d="M8 25C8 39 15 47 24 47C33 47 40 39 40 25Z" fill="url(#ciB)" stroke="#3d3d62" stroke-width="1.5"/>
+    <ellipse cx="24" cy="22" rx="14" ry="5" fill="url(#ciG)"/>
+    <path d="M8 25C8 11 14 3 24 3C34 3 40 11 40 25Z" fill="url(#ciT)" stroke="#3d3d62" stroke-width="1.5" transform="translate(0,-3)"/>
+    <path d="M9 23L14 19L19 24L23 18L27 24L32 19L37 23L40 21" stroke="#facc15" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div>
+    <div class="hatch-wordmark">Hatch</div>
+    <h1>Cloud-Init Config Generator</h1>
+    <p>Generate user-data and network-config for automated Linux cloud instance setup</p>
+  </div>
+  <a href="index.html" class="home-link">← Home</a>
+  <div class="privacy-badge">🔒 100% Local — No Data Transmitted</div>
+</header>
+
+<div class="container">
+  <div class="progress-bar"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="step-indicator" id="stepIndicator"></div>
+
+  <!-- ═══ STEP 1: System Basics ═══ -->
+  <div class="step-section" id="step-0">
+    <div class="card">
+      <h2>🖥️ System Basics</h2>
+      <p class="subtitle">Core identity and locale settings written to the instance on first boot.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Distro / OS Family <span class="req">*</span></label>
+          <select id="distroFamily" onchange="onDistroChange()">
+            <option value="apt">Ubuntu / Debian (apt)</option>
+            <option value="yum">RHEL / CentOS / Rocky / AlmaLinux (yum/dnf)</option>
+            <option value="amazon">Amazon Linux 2 / 2023 (dnf)</option>
+            <option value="suse">SUSE / openSUSE (zypper)</option>
+            <option value="arch">Arch Linux (pacman)</option>
+            <option value="other">Other / Generic</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Hostname <span class="hint">Short hostname, no dots</span></label>
+          <input type="text" id="hostname" placeholder="myserver" maxlength="63">
+        </div>
+        <div class="form-group">
+          <label>FQDN <span class="hint">Optional — overrides hostname</span></label>
+          <input type="text" id="fqdn" placeholder="myserver.example.com">
+        </div>
+        <div class="form-group">
+          <label>Manage /etc/hosts</label>
+          <select id="manageEtcHosts">
+            <option value="true">true — cloud-init manages it</option>
+            <option value="false">false — leave as-is</option>
+            <option value="localhost">localhost — add hostname to loopback only</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Timezone <span class="hint">IANA format</span></label>
+          <select id="timezone">
+            <option value="UTC">UTC</option>
+            <option value="America/New_York">America/New_York (ET)</option>
+            <option value="America/Chicago">America/Chicago (CT)</option>
+            <option value="America/Denver">America/Denver (MT)</option>
+            <option value="America/Los_Angeles">America/Los_Angeles (PT)</option>
+            <option value="America/Anchorage">America/Anchorage (AK)</option>
+            <option value="America/Honolulu">America/Honolulu (HI)</option>
+            <option value="America/Halifax">America/Halifax (AT)</option>
+            <option value="America/Toronto">America/Toronto (ET)</option>
+            <option value="America/Vancouver">America/Vancouver (PT)</option>
+            <option value="America/Sao_Paulo">America/Sao_Paulo (BRT)</option>
+            <option value="Europe/London">Europe/London (GMT/BST)</option>
+            <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
+            <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
+            <option value="Europe/Amsterdam">Europe/Amsterdam</option>
+            <option value="Europe/Stockholm">Europe/Stockholm</option>
+            <option value="Europe/Oslo">Europe/Oslo</option>
+            <option value="Europe/Copenhagen">Europe/Copenhagen</option>
+            <option value="Europe/Helsinki">Europe/Helsinki</option>
+            <option value="Europe/Warsaw">Europe/Warsaw</option>
+            <option value="Europe/Prague">Europe/Prague</option>
+            <option value="Europe/Vienna">Europe/Vienna</option>
+            <option value="Europe/Rome">Europe/Rome</option>
+            <option value="Europe/Madrid">Europe/Madrid</option>
+            <option value="Europe/Lisbon">Europe/Lisbon</option>
+            <option value="Europe/Athens">Europe/Athens</option>
+            <option value="Europe/Bucharest">Europe/Bucharest</option>
+            <option value="Europe/Istanbul">Europe/Istanbul</option>
+            <option value="Europe/Moscow">Europe/Moscow</option>
+            <option value="Asia/Dubai">Asia/Dubai (GST)</option>
+            <option value="Asia/Karachi">Asia/Karachi (PKT)</option>
+            <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+            <option value="Asia/Dhaka">Asia/Dhaka (BST)</option>
+            <option value="Asia/Bangkok">Asia/Bangkok (ICT)</option>
+            <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+            <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
+            <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+            <option value="Asia/Seoul">Asia/Seoul (KST)</option>
+            <option value="Australia/Sydney">Australia/Sydney (AEST)</option>
+            <option value="Australia/Melbourne">Australia/Melbourne</option>
+            <option value="Australia/Perth">Australia/Perth (AWST)</option>
+            <option value="Pacific/Auckland">Pacific/Auckland (NZST)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Locale</label>
+          <input type="text" id="locale" value="en_US.UTF-8" placeholder="en_US.UTF-8" list="locale-suggestions">
+          <datalist id="locale-suggestions">
+            <option value="en_US.UTF-8"><option value="en_GB.UTF-8"><option value="en_AU.UTF-8">
+            <option value="de_DE.UTF-8"><option value="fr_FR.UTF-8"><option value="es_ES.UTF-8">
+            <option value="it_IT.UTF-8"><option value="pt_BR.UTF-8"><option value="ja_JP.UTF-8">
+            <option value="zh_CN.UTF-8"><option value="ko_KR.UTF-8"><option value="ru_RU.UTF-8">
+            <option value="ar_SA.UTF-8"><option value="tr_TR.UTF-8"><option value="nl_NL.UTF-8">
+            <option value="pl_PL.UTF-8"><option value="sv_SE.UTF-8">
+          </datalist>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 2: Users & Authentication ═══ -->
+  <div class="step-section section-hidden" id="step-1">
+    <div class="card">
+      <h2>👤 Users &amp; Authentication</h2>
+      <p class="subtitle">Configure user accounts, SSH keys, and authentication settings.</p>
+
+      <div class="form-grid" style="margin-bottom:16px">
+        <div class="form-group">
+          <label>Disable root SSH login</label>
+          <select id="disableRoot">
+            <option value="true">true — disable root (recommended)</option>
+            <option value="false">false — allow root login</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>SSH Password Authentication</label>
+          <select id="sshPwauth">
+            <option value="false">false — key-based only (recommended)</option>
+            <option value="true">true — allow passwords</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-title">User Accounts</div>
+      <div class="blue-box">ℹ️ cloud-init does not accept plain text passwords. Each user's password field expects a SHA-512 crypt hash. Generate one with: <code class="mono">openssl passwd -6</code> (prompts you to type the password, outputs the hash).</div>
+      <div class="dynamic-list" id="userList"></div>
+      <button class="btn btn-secondary" style="margin-top:10px" onclick="addUser()">+ Add User</button>
+
+      <div style="margin-top:20px">
+        <div class="section-title">Global SSH Authorized Keys</div>
+        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:10px">Keys added here are injected into the default cloud user (e.g. ubuntu, ec2-user). One key per line.</p>
+        <textarea id="globalSshKeys" class="mono" rows="4" placeholder="ssh-ed25519 AAAA... user@host&#10;ssh-rsa AAAA... another@host"></textarea>
+      </div>
+
+      <div style="margin-top:20px">
+        <div class="section-title">Force Password Change (chpasswd)</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Expire passwords on first login</label>
+            <select id="chpasswdExpire">
+              <option value="">— not configured —</option>
+              <option value="true">true — force change on first login</option>
+              <option value="false">false — passwords do not expire</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label>Password list <span class="hint">format: username:hashed_password, one per line</span></label>
+            <textarea id="chpasswdList" class="mono" rows="3" placeholder="admin:$6$rounds=4096$salt$hash...&#10;user2:$6$rounds=4096$salt$hash..."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 3: Network ═══ -->
+  <div class="step-section section-hidden" id="step-2">
+    <div class="card">
+      <h2>🌐 Network Configuration</h2>
+      <p class="subtitle">Configure network interfaces. Generates a separate <code>network-config</code> file (cloud-init network v2 / Netplan format).</p>
+
+      <div class="form-grid" style="margin-bottom:16px">
+        <div class="form-group">
+          <label>Network Config Mode</label>
+          <select id="netConfigMode" onchange="onNetConfigModeChange()">
+            <option value="skip">Skip — use cloud provider defaults (DHCP)</option>
+            <option value="v2">Generate network-config v2 (Netplan)</option>
+          </select>
+        </div>
+        <div class="form-group" id="netRendererGroup" style="display:none">
+          <label>Renderer</label>
+          <select id="netRenderer">
+            <option value="networkd">networkd (servers, Ubuntu minimal)</option>
+            <option value="NetworkManager">NetworkManager (desktop, RHEL)</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="netInterfaceArea" style="display:none">
+        <div class="section-title">Network Interfaces</div>
+        <div class="dynamic-list" id="ifaceList"></div>
+        <button class="btn btn-secondary" style="margin-top:10px" onclick="addInterface()">+ Add Interface</button>
+
+        <div style="margin-top:20px">
+          <div class="section-title">Global DNS</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>DNS Nameservers <span class="hint">Enter, press comma or Enter</span></label>
+              <div class="tag-input-container" onclick="this.querySelector('input').focus()">
+                <div id="globalDnsTags"></div>
+                <input class="tag-input" id="globalDnsInput" placeholder="8.8.8.8" onkeydown="addTagFromInput(event,'globalDns')">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>DNS Search Domains</label>
+              <div class="tag-input-container" onclick="this.querySelector('input').focus()">
+                <div id="globalDnsSearchTags"></div>
+                <input class="tag-input" id="globalDnsSearchInput" placeholder="example.com" onkeydown="addTagFromInput(event,'globalDnsSearch')">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 4: Packages ═══ -->
+  <div class="step-section section-hidden" id="step-3">
+    <div class="card">
+      <h2>📦 Package Management</h2>
+      <p class="subtitle">Install packages and configure repositories on first boot.</p>
+
+      <div class="toggle-row">
+        <div><div class="toggle-label">Update package cache on boot</div><div class="toggle-desc">Equivalent to apt-get update / yum makecache</div></div>
+        <label class="toggle"><input type="checkbox" id="pkgUpdate" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><div class="toggle-label">Upgrade all packages on boot</div><div class="toggle-desc">Equivalent to apt-get upgrade / yum upgrade</div></div>
+        <label class="toggle"><input type="checkbox" id="pkgUpgrade"><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row" style="margin-bottom:16px">
+        <div><div class="toggle-label">Reboot if required after upgrade</div><div class="toggle-desc">Reboots automatically if a kernel or libc upgrade requires it</div></div>
+        <label class="toggle"><input type="checkbox" id="pkgReboot"><span class="slider"></span></label>
+      </div>
+
+      <div class="section-title" style="margin-top:8px">Packages to Install</div>
+      <div class="tag-input-container" onclick="this.querySelector('input').focus()" style="margin-bottom:8px">
+        <div id="packageTags"></div>
+        <input class="tag-input" id="packageInput" placeholder="curl — press Enter or comma to add" onkeydown="addTagFromInput(event,'package')">
+      </div>
+      <div class="quick-pkg" id="quickPkgButtons"></div>
+
+      <!-- APT repos -->
+      <div id="aptRepoArea" style="margin-top:20px">
+        <div class="section-title">Additional APT Sources</div>
+        <div class="dynamic-list" id="aptSourceList"></div>
+        <button class="btn btn-secondary" style="margin-top:8px" onclick="addAptSource()">+ Add APT Source</button>
+        <div style="margin-top:12px">
+          <label style="margin-bottom:6px;display:block">APT Proxy <span class="hint">Optional HTTP proxy for apt</span></label>
+          <input type="text" id="aptProxy" placeholder="http://proxy.example.com:3128/">
+        </div>
+      </div>
+
+      <!-- YUM repos -->
+      <div id="yumRepoArea" style="margin-top:20px;display:none">
+        <div class="section-title">Additional YUM/DNF Repositories</div>
+        <div class="dynamic-list" id="yumRepoList"></div>
+        <button class="btn btn-secondary" style="margin-top:8px" onclick="addYumRepo()">+ Add Repository</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 5: Storage ═══ -->
+  <div class="step-section section-hidden" id="step-4">
+    <div class="card">
+      <h2>💾 Storage — Mounts &amp; Swap</h2>
+      <p class="subtitle">Configure additional disk mounts and swap space. The root filesystem is handled automatically.</p>
+
+      <div class="section-title">Mounts</div>
+      <div class="blue-box">ℹ️ Entries map to <code>/etc/fstab</code>. Use <code>nofail</code> for non-critical mounts to prevent boot failures if the device is absent.</div>
+      <div class="dynamic-list" id="mountList"></div>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="addMount()">+ Add Mount</button>
+
+      <div style="margin-top:24px">
+        <div class="section-title">Swap</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Swap File Path <span class="hint">Leave blank to skip swap config</span></label>
+            <input type="text" id="swapFile" placeholder="/swap" value="">
+          </div>
+          <div class="form-group">
+            <label>Swap Size</label>
+            <select id="swapSize">
+              <option value="auto">auto (cloud-init decides)</option>
+              <option value="1073741824">1 GB</option>
+              <option value="2147483648">2 GB</option>
+              <option value="4294967296">4 GB</option>
+              <option value="8589934592">8 GB</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Max Swap Size <span class="hint">Bytes — caps auto-size</span></label>
+            <input type="text" id="swapMaxsize" placeholder="2147483648">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 6: Files & Early Commands ═══ -->
+  <div class="step-section section-hidden" id="step-5">
+    <div class="card">
+      <h2>📝 Write Files</h2>
+      <p class="subtitle">Create or overwrite files on the instance during cloud-init. Runs before runcmd.</p>
+      <div class="dynamic-list" id="writeFileList"></div>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="addWriteFile()">+ Add File</button>
+    </div>
+
+    <div class="card">
+      <h2>⚡ Boot Commands (bootcmd)</h2>
+      <p class="subtitle">Commands that run on <strong>every boot</strong> very early, before cloud-init modules. Must be idempotent.</p>
+      <div class="warn-box">⚠️ bootcmd runs on EVERY boot — not just the first. Use only for idempotent operations like sysctl settings.</div>
+      <div class="dynamic-list" id="bootcmdList"></div>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="addBootCmd()">+ Add Boot Command</button>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+        <button class="btn btn-secondary btn-sm" onclick="quickBootCmd('sysctl -w vm.max_map_count=262144')">vm.max_map_count</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickBootCmd('sysctl -w net.ipv4.ip_forward=1')">Enable IP Forward</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickBootCmd('echo never > /sys/kernel/mm/transparent_hugepage/enabled')">Disable THP</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickBootCmd('sysctl -w net.core.somaxconn=65535')">Max Connections</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 7: Run Commands & Services ═══ -->
+  <div class="step-section section-hidden" id="step-6">
+    <div class="card">
+      <h2>🚀 Run Commands (runcmd)</h2>
+      <p class="subtitle">Commands that run <strong>once</strong> on first boot after all cloud-init modules complete. Use for application setup.</p>
+      <div class="blue-box">ℹ️ runcmd runs as root. Commands run with <code>/bin/sh -c</code> so shell features like pipes and redirects work.</div>
+      <div class="dynamic-list" id="runcmdList"></div>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="addRunCmd()">+ Add Command</button>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+        <button class="btn btn-secondary btn-sm" onclick="quickRunCmd('systemctl daemon-reload')">daemon-reload</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickRunCmd('systemctl enable --now docker')">Enable Docker</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickRunCmd('ufw allow 22/tcp && ufw --force enable')">Enable UFW</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickRunCmd('timedatectl set-ntp true')">Enable NTP</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickRunCmd('curl -fsSL https://get.docker.com | sh')">Install Docker</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickRunCmd('setenforce 0 && sed -i s/^SELINUX=.*/SELINUX=permissive/ /etc/selinux/config')">SELinux Permissive</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickRunCmd('dnf install -y epel-release')">Install EPEL</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickRunCmd('apt-get install -y --no-install-recommends nfs-common')">NFS Client</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🕐 NTP Configuration</h2>
+      <p class="subtitle">Configure Network Time Protocol servers.</p>
+      <div class="toggle-row">
+        <div><div class="toggle-label">Enable NTP configuration</div><div class="toggle-desc">Let cloud-init configure NTP client</div></div>
+        <label class="toggle"><input type="checkbox" id="ntpEnabled" onchange="onNtpToggle()"><span class="slider"></span></label>
+      </div>
+      <div id="ntpOptions" style="display:none;margin-top:16px">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>NTP Client</label>
+            <select id="ntpClient">
+              <option value="auto">auto (cloud-init selects)</option>
+              <option value="chrony">chrony</option>
+              <option value="systemd-timesyncd">systemd-timesyncd</option>
+              <option value="ntp">ntp (ntpd)</option>
+              <option value="openntpd">openntpd</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-grid" style="margin-top:12px">
+          <div class="form-group">
+            <label>NTP Servers</label>
+            <div class="tag-input-container" onclick="this.querySelector('input').focus()">
+              <div id="ntpServerTags"></div>
+              <input class="tag-input" id="ntpServerInput" placeholder="0.pool.ntp.org" onkeydown="addTagFromInput(event,'ntpServer')">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>NTP Pools</label>
+            <div class="tag-input-container" onclick="this.querySelector('input').focus()">
+              <div id="ntpPoolTags"></div>
+              <input class="tag-input" id="ntpPoolInput" placeholder="pool.ntp.org" onkeydown="addTagFromInput(event,'ntpPool')">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>⚙️ Final Settings</h2>
+      <p class="subtitle">Post-init message and power state action.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Power State After Init</label>
+          <select id="powerState">
+            <option value="">None — do nothing</option>
+            <option value="reboot">reboot</option>
+            <option value="halt">halt</option>
+            <option value="poweroff">poweroff</option>
+          </select>
+        </div>
+        <div class="form-group" id="powerDelayGroup">
+          <label>Power State Delay <span class="hint">e.g. now, +1, +5</span></label>
+          <input type="text" id="powerDelay" value="now" placeholder="now">
+        </div>
+        <div class="form-group full">
+          <label>Final Message <span class="hint">Written to cloud-init log when complete</span></label>
+          <textarea id="finalMessage" rows="2" placeholder="Cloud-init complete on $HOSTNAME"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 8: Review & Generate ═══ -->
+  <div class="step-section section-hidden" id="step-7">
+    <div class="card">
+      <h2>✅ Review &amp; Generate</h2>
+      <p class="subtitle">Review your configuration, then generate the cloud-init files.</p>
+      <div id="reviewSummary" class="review-grid"></div>
+    </div>
+
+    <div id="outputArea" style="display:none">
+      <div class="card">
+        <h2>📄 user-data</h2>
+        <p class="subtitle">Place this file in your datasource as <code>user-data</code>. The first line must be exactly <code>#cloud-config</code>.</p>
+        <pre class="yaml-output" id="userDataOutput"></pre>
+        <div class="output-actions">
+          <button class="btn btn-primary btn-lg" onclick="downloadFile('userDataOutput','user-data')">⬇ Download user-data</button>
+          <button class="btn btn-secondary" onclick="copyOutput('userDataOutput')">📋 Copy</button>
+        </div>
+      </div>
+
+      <div class="card" id="networkOutputCard" style="display:none">
+        <h2>🌐 network-config</h2>
+        <p class="subtitle">Place this file alongside user-data in your datasource as <code>network-config</code>.</p>
+        <pre class="yaml-output" id="networkOutput"></pre>
+        <div class="output-actions">
+          <button class="btn btn-primary" onclick="downloadFile('networkOutput','network-config')">⬇ Download network-config</button>
+          <button class="btn btn-secondary" onclick="copyOutput('networkOutput')">📋 Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn btn-secondary" onclick="prevStep()">← Back</button>
+      <button class="btn btn-primary btn-lg" onclick="generateAll()">⚡ Generate Config</button>
+    </div>
+  </div>
+
+  <!-- Nav buttons -->
+  <div id="navButtons" class="nav-buttons">
+    <button class="btn btn-secondary" onclick="prevStep()" id="prevBtn" style="visibility:hidden">← Back</button>
+    <button class="btn btn-primary" onclick="nextStep()" id="nextBtn">Next →</button>
+  </div>
+</div>
+
+<div class="copy-feedback" id="copyFeedback">Copied!</div>
+
+<script>
+// ─── Step definitions ─────────────────────────────────────────────────────────
+const STEPS = ['System', 'Users & Auth', 'Network', 'Packages', 'Storage', 'Files & Boot', 'Commands', 'Generate'];
+let currentStep = 0;
+
+// ─── State arrays ─────────────────────────────────────────────────────────────
+let users = [];
+let interfaces = [];
+let packages = [];
+let globalDns = [];
+let globalDnsSearch = [];
+let aptSources = [];
+let yumRepos = [];
+let mounts = [];
+let writeFiles = [];
+let bootCmds = [];
+let runCmds = [];
+let ntpServers = [];
+let ntpPools = [];
+
+// ─── Tag stores ───────────────────────────────────────────────────────────────
+const tagStores = { package: packages, globalDns, globalDnsSearch, ntpServer: ntpServers, ntpPool: ntpPools };
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function init() {
+  renderStepIndicator();
+  renderStep();
+  onDistroChange();
+}
+
+function renderStep() {
+  document.querySelectorAll('.step-section').forEach((el,i) => el.classList.toggle('section-hidden', i !== currentStep));
+  const isLast = currentStep === STEPS.length - 1;
+  document.getElementById('navButtons').style.display = isLast ? 'none' : 'flex';
+  document.getElementById('prevBtn').style.visibility = currentStep === 0 ? 'hidden' : 'visible';
+  document.getElementById('progressFill').style.width = Math.round((currentStep/(STEPS.length-1))*100) + '%';
+  renderStepIndicator();
+  if (isLast) renderReview();
+}
+
+function renderStepIndicator() {
+  const c = document.getElementById('stepIndicator');
+  c.innerHTML = '';
+  STEPS.forEach((name,i) => {
+    const p = document.createElement('button');
+    p.className = 'step-pill' + (i===currentStep?' active':i<currentStep?' done':'');
+    p.textContent = (i<currentStep?'✓ ':'')+name;
+    p.onclick = () => { if(i<=currentStep){currentStep=i;renderStep();} };
+    c.appendChild(p);
+  });
+}
+
+function nextStep() { if(currentStep<STEPS.length-1){currentStep++;renderStep();window.scrollTo(0,0);} }
+function prevStep() { if(currentStep>0){currentStep--;renderStep();window.scrollTo(0,0);} }
+
+// ─── Distro change ────────────────────────────────────────────────────────────
+function onDistroChange() {
+  const d = document.getElementById('distroFamily').value;
+  document.getElementById('aptRepoArea').style.display = d === 'apt' ? '' : 'none';
+  document.getElementById('yumRepoArea').style.display = (d === 'yum' || d === 'amazon') ? '' : 'none';
+  renderQuickPkgs(d);
+}
+
+function renderQuickPkgs(distro) {
+  const pkgs = ['curl','wget','vim','git','htop','unzip','jq','net-tools','rsync','tree','tmux','bash-completion'];
+  const el = document.getElementById('quickPkgButtons');
+  el.innerHTML = '';
+  pkgs.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'btn btn-secondary btn-sm';
+    b.textContent = p;
+    b.onclick = () => { if (!packages.includes(p)) { packages.push(p); renderTags('package'); } };
+    el.appendChild(b);
+  });
+}
+
+// ─── Tag input generic ────────────────────────────────────────────────────────
+function addTagFromInput(e, storeName) {
+  if (e.key !== 'Enter' && e.key !== ',') return;
+  e.preventDefault();
+  const val = e.target.value.trim().replace(/,$/, '');
+  if (!val) return;
+  const store = tagStores[storeName];
+  if (!store.includes(val)) { store.push(val); renderTags(storeName); }
+  e.target.value = '';
+}
+
+function renderTags(storeName) {
+  const store = tagStores[storeName];
+  const suffix = { package:'Tags', globalDns:'Tags', globalDnsSearch:'Tags', ntpServer:'Tags', ntpPool:'Tags' };
+  const container = document.getElementById(storeName + (suffix[storeName]||'Tags'));
+  if (!container) return;
+  container.innerHTML = '';
+  store.forEach((v,i) => {
+    const t = document.createElement('span');
+    t.className = 'ci-tag';
+    t.innerHTML = `${esc(v)} <span class="tag-remove" onclick="removeTag('${storeName}',${i})">×</span>`;
+    container.appendChild(t);
+  });
+}
+
+function removeTag(storeName, i) {
+  tagStores[storeName].splice(i,1);
+  renderTags(storeName);
+}
+
+// ─── Network ──────────────────────────────────────────────────────────────────
+function onNetConfigModeChange() {
+  const mode = document.getElementById('netConfigMode').value;
+  const show = mode === 'v2';
+  document.getElementById('netRendererGroup').style.display = show ? '' : 'none';
+  document.getElementById('netInterfaceArea').style.display = show ? '' : 'none';
+}
+
+function addInterface() {
+  interfaces.push({ name: 'eth0', dhcp4: true, dhcp6: false, ip: '', prefix: '24', gw: '', dns: [], search: [] });
+  renderInterfaces();
+}
+
+function removeInterface(i) { interfaces.splice(i,1); renderInterfaces(); }
+
+function renderInterfaces() {
+  const list = document.getElementById('ifaceList');
+  list.innerHTML = '';
+  interfaces.forEach((iface, i) => {
+    const card = document.createElement('div');
+    card.className = 'iface-card';
+    card.style.marginBottom = '10px';
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <span style="font-weight:600;color:var(--accent)">Interface ${i+1}</span>
+        <button class="btn btn-secondary btn-sm" onclick="removeInterface(${i})">Remove</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Interface Name</label>
+          <input type="text" value="${escA(iface.name)}" placeholder="eth0" oninput="interfaces[${i}].name=this.value">
+        </div>
+        <div class="form-group">
+          <label>Configuration</label>
+          <select onchange="interfaces[${i}].dhcp4=this.value==='dhcp';renderInterfaces()">
+            <option value="dhcp" ${iface.dhcp4?'selected':''}>DHCP</option>
+            <option value="static" ${!iface.dhcp4?'selected':''}>Static</option>
+          </select>
+        </div>
+        ${!iface.dhcp4 ? `
+        <div class="form-group">
+          <label>IP Address / Prefix Length</label>
+          <input type="text" value="${escA(iface.ip)}" placeholder="192.168.1.10/24" oninput="interfaces[${i}].ip=this.value">
+        </div>
+        <div class="form-group">
+          <label>Default Gateway</label>
+          <input type="text" value="${escA(iface.gw)}" placeholder="192.168.1.1" oninput="interfaces[${i}].gw=this.value">
+        </div>` : ''}
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+function addUser() {
+  users.push({ name:'', gecos:'', groups:'sudo', shell:'/bin/bash', sudo:'ALL=(ALL) NOPASSWD:ALL', lockPasswd:true, passwd:'', sshKeys:'', sshImportId:'' });
+  renderUsers();
+}
+
+function removeUser(i) { users.splice(i,1); renderUsers(); }
+
+function renderUsers() {
+  const list = document.getElementById('userList');
+  list.innerHTML = '';
+  users.forEach((u,i) => {
+    const card = document.createElement('div');
+    card.className = 'user-card';
+    card.style.marginBottom = '10px';
+    card.innerHTML = `
+      <div class="user-card-header">
+        <span class="user-card-name">${esc(u.name)||'New User'}</span>
+        <button class="btn btn-secondary btn-sm" onclick="removeUser(${i})">Remove</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Username <span class="req">*</span></label>
+          <input type="text" value="${escA(u.name)}" placeholder="admin" oninput="users[${i}].name=this.value; this.closest('.user-card').querySelector('.user-card-name').textContent=this.value||'New User'">
+        </div>
+        <div class="form-group">
+          <label>Full Name (GECOS)</label>
+          <input type="text" value="${escA(u.gecos)}" placeholder="Admin User" oninput="users[${i}].gecos=this.value">
+        </div>
+        <div class="form-group">
+          <label>Groups <span class="hint">comma-separated</span></label>
+          <input type="text" value="${escA(u.groups)}" placeholder="sudo,docker" oninput="users[${i}].groups=this.value">
+        </div>
+        <div class="form-group">
+          <label>Shell</label>
+          <select onchange="users[${i}].shell=this.value">
+            <option value="/bin/bash" ${u.shell==='/bin/bash'?'selected':''}>/bin/bash</option>
+            <option value="/bin/zsh" ${u.shell==='/bin/zsh'?'selected':''}>/bin/zsh</option>
+            <option value="/bin/sh" ${u.shell==='/bin/sh'?'selected':''}>/bin/sh</option>
+            <option value="/usr/sbin/nologin" ${u.shell==='/usr/sbin/nologin'?'selected':''}>/usr/sbin/nologin</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Sudo</label>
+          <select onchange="users[${i}].sudo=this.value">
+            <option value="ALL=(ALL) NOPASSWD:ALL" ${u.sudo==='ALL=(ALL) NOPASSWD:ALL'?'selected':''}>NOPASSWD:ALL (no password)</option>
+            <option value="ALL=(ALL:ALL) ALL" ${u.sudo==='ALL=(ALL:ALL) ALL'?'selected':''}>ALL (password required)</option>
+            <option value="" ${u.sudo===''?'selected':''}>None</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Password <span class="hint">Must be a SHA-512 hash — plain text is not accepted</span></label>
+          <input type="text" class="mono" value="${escA(u.passwd)}" placeholder="$6$rounds=4096$salt$hash  — leave blank for key-only auth" oninput="users[${i}].passwd=this.value">
+          <div style="font-size:0.74rem;color:var(--text-muted);margin-top:4px">Generate hash: <code style="background:var(--bg);padding:1px 6px;border-radius:4px;font-size:0.78rem">openssl passwd -6</code> then paste the output above</div>
+        </div>
+        <div class="form-group">
+          <label>Allow Password Login</label>
+          <select onchange="users[${i}].lockPasswd=this.value==='false'">
+            <option value="false" ${!u.lockPasswd?'selected':''}>No — key-based auth only (recommended)</option>
+            <option value="true" ${u.lockPasswd?'selected':''}>Yes — allow SSH password login</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>SSH Import IDs <span class="hint">e.g. gh:username lp:username</span></label>
+          <input type="text" value="${escA(u.sshImportId)}" placeholder="gh:octocat" oninput="users[${i}].sshImportId=this.value">
+        </div>
+        <div class="form-group full">
+          <label>SSH Authorized Keys <span class="hint">one per line</span></label>
+          <textarea class="mono" rows="3" placeholder="ssh-ed25519 AAAA... user@host" oninput="users[${i}].sshKeys=this.value">${esc(u.sshKeys)}</textarea>
+        </div>
+      </div>`;
+    list.appendChild(card);
+  });
+  if (!users.length) list.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0">No users configured. The cloud provider default user (ubuntu, ec2-user, etc.) will still be created.</p>';
+}
+
+// ─── APT sources ──────────────────────────────────────────────────────────────
+function addAptSource() {
+  aptSources.push({ name:'', source:'', keyid:'' });
+  renderAptSources();
+}
+function removeAptSource(i) { aptSources.splice(i,1); renderAptSources(); }
+function renderAptSources() {
+  const list = document.getElementById('aptSourceList');
+  list.innerHTML = '';
+  aptSources.forEach((s,i) => {
+    const row = document.createElement('div');
+    row.className = 'dynamic-row';
+    row.innerHTML = `
+      <div class="dynamic-row-header"><span class="dynamic-row-title">APT Source ${i+1}</span>
+        <button class="btn btn-secondary btn-sm" onclick="removeAptSource(${i})">Remove</button></div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Source List Name <span class="hint">used as filename in sources.list.d</span></label>
+          <input type="text" value="${escA(s.name)}" placeholder="docker.list" oninput="aptSources[${i}].name=this.value">
+        </div>
+        <div class="form-group">
+          <label>GPG Key ID</label>
+          <input type="text" class="mono" value="${escA(s.keyid)}" placeholder="9DC858229FC7DD38854AE2D88D81803C0EBFCD88" oninput="aptSources[${i}].keyid=this.value">
+        </div>
+        <div class="form-group full">
+          <label>Source Line</label>
+          <input type="text" class="mono" value="${escA(s.source)}" placeholder="deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable" oninput="aptSources[${i}].source=this.value">
+        </div>
+      </div>`;
+    list.appendChild(row);
+  });
+}
+
+// ─── YUM repos ────────────────────────────────────────────────────────────────
+function addYumRepo() {
+  yumRepos.push({ id:'', name:'', baseurl:'', gpgcheck:true, gpgkey:'', enabled:true });
+  renderYumRepos();
+}
+function removeYumRepo(i) { yumRepos.splice(i,1); renderYumRepos(); }
+function renderYumRepos() {
+  const list = document.getElementById('yumRepoList');
+  list.innerHTML = '';
+  yumRepos.forEach((r,i) => {
+    const row = document.createElement('div');
+    row.className = 'dynamic-row';
+    row.innerHTML = `
+      <div class="dynamic-row-header"><span class="dynamic-row-title">Repository ${i+1}</span>
+        <button class="btn btn-secondary btn-sm" onclick="removeYumRepo(${i})">Remove</button></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Repo ID</label><input type="text" value="${escA(r.id)}" placeholder="epel" oninput="yumRepos[${i}].id=this.value"></div>
+        <div class="form-group"><label>Name</label><input type="text" value="${escA(r.name)}" placeholder="EPEL" oninput="yumRepos[${i}].name=this.value"></div>
+        <div class="form-group full"><label>Base URL</label><input type="text" class="mono" value="${escA(r.baseurl)}" placeholder="https://dl.fedoraproject.org/pub/epel/$releasever/$basearch/" oninput="yumRepos[${i}].baseurl=this.value"></div>
+        <div class="form-group"><label>GPG Key URL</label><input type="text" class="mono" value="${escA(r.gpgkey)}" placeholder="https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL" oninput="yumRepos[${i}].gpgkey=this.value"></div>
+        <div class="form-group"><label>GPG Check</label>
+          <select onchange="yumRepos[${i}].gpgcheck=this.value==='true'">
+            <option value="true" ${r.gpgcheck?'selected':''}>true</option>
+            <option value="false" ${!r.gpgcheck?'selected':''}>false</option>
+          </select>
+        </div>
+      </div>`;
+    list.appendChild(row);
+  });
+}
+
+// ─── Mounts ───────────────────────────────────────────────────────────────────
+function addMount() {
+  mounts.push({ device:'', mountpoint:'', fstype:'ext4', options:'defaults,nofail', dump:0, pass:0 });
+  renderMounts();
+}
+function removeMount(i) { mounts.splice(i,1); renderMounts(); }
+function renderMounts() {
+  const list = document.getElementById('mountList');
+  list.innerHTML = '';
+  mounts.forEach((m,i) => {
+    const row = document.createElement('div');
+    row.className = 'dynamic-row';
+    row.innerHTML = `
+      <div class="dynamic-row-header"><span class="dynamic-row-title">Mount ${i+1}</span>
+        <button class="btn btn-secondary btn-sm" onclick="removeMount(${i})">Remove</button></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Device / UUID / Label</label><input type="text" class="mono" value="${escA(m.device)}" placeholder="/dev/sdb1 or UUID=abc-123" oninput="mounts[${i}].device=this.value"></div>
+        <div class="form-group"><label>Mount Point</label><input type="text" class="mono" value="${escA(m.mountpoint)}" placeholder="/data" oninput="mounts[${i}].mountpoint=this.value"></div>
+        <div class="form-group"><label>Filesystem Type</label>
+          <select onchange="mounts[${i}].fstype=this.value">
+            ${['ext4','xfs','btrfs','nfs','nfs4','cifs','tmpfs','vfat','swap'].map(f=>`<option value="${f}" ${m.fstype===f?'selected':''}>${f}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label>Mount Options</label><input type="text" class="mono" value="${escA(m.options)}" placeholder="defaults,noatime,nofail" oninput="mounts[${i}].options=this.value"></div>
+        <div class="form-group"><label>Dump (0/1)</label><input type="number" value="${m.dump}" min="0" max="1" oninput="mounts[${i}].dump=+this.value"></div>
+        <div class="form-group"><label>Fsck Pass (0/1/2)</label><input type="number" value="${m.pass}" min="0" max="2" oninput="mounts[${i}].pass=+this.value"></div>
+      </div>`;
+    list.appendChild(row);
+  });
+  if (!mounts.length) list.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0">No additional mounts configured.</p>';
+}
+
+// ─── Write files ──────────────────────────────────────────────────────────────
+function addWriteFile() {
+  writeFiles.push({ path:'', content:'', owner:'root:root', permissions:'0644', encoding:'text', append:false });
+  renderWriteFiles();
+}
+function removeWriteFile(i) { writeFiles.splice(i,1); renderWriteFiles(); }
+function renderWriteFiles() {
+  const list = document.getElementById('writeFileList');
+  list.innerHTML = '';
+  writeFiles.forEach((f,i) => {
+    const row = document.createElement('div');
+    row.className = 'dynamic-row';
+    row.innerHTML = `
+      <div class="dynamic-row-header"><span class="dynamic-row-title">${esc(f.path)||'New File'}</span>
+        <button class="btn btn-secondary btn-sm" onclick="removeWriteFile(${i})">Remove</button></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Path <span class="req">*</span></label><input type="text" class="mono" value="${escA(f.path)}" placeholder="/etc/myapp/config.toml" oninput="writeFiles[${i}].path=this.value;renderWriteFiles()"></div>
+        <div class="form-group"><label>Owner</label><input type="text" value="${escA(f.owner)}" placeholder="root:root" oninput="writeFiles[${i}].owner=this.value"></div>
+        <div class="form-group"><label>Permissions</label><input type="text" class="mono" value="${escA(f.permissions)}" placeholder="0644" maxlength="4" oninput="writeFiles[${i}].permissions=this.value"></div>
+        <div class="form-group"><label>Encoding</label>
+          <select onchange="writeFiles[${i}].encoding=this.value">
+            <option value="text" ${f.encoding==='text'?'selected':''}>text (plain)</option>
+            <option value="b64" ${f.encoding==='b64'?'selected':''}>base64</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Append Mode</label>
+          <select onchange="writeFiles[${i}].append=this.value==='true'">
+            <option value="false" ${!f.append?'selected':''}>false — overwrite</option>
+            <option value="true" ${f.append?'selected':''}>true — append</option>
+          </select>
+        </div>
+        <div class="form-group full"><label>File Content</label>
+          <textarea class="mono" rows="5" placeholder="File content here..." oninput="writeFiles[${i}].content=this.value">${esc(f.content)}</textarea>
+        </div>
+      </div>`;
+    list.appendChild(row);
+  });
+  if (!writeFiles.length) list.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0">No files configured.</p>';
+}
+
+// ─── Boot / run commands ──────────────────────────────────────────────────────
+function addBootCmd() { bootCmds.push(''); renderCmdList('bootcmdList', bootCmds, 'bootCmds', 'Boot command'); }
+function addRunCmd() { runCmds.push(''); renderCmdList('runcmdList', runCmds, 'runCmds', 'Command'); }
+function quickBootCmd(cmd) { bootCmds.push(cmd); renderCmdList('bootcmdList', bootCmds, 'bootCmds', 'Boot command'); }
+function quickRunCmd(cmd) { runCmds.push(cmd); renderCmdList('runcmdList', runCmds, 'runCmds', 'Command'); }
+
+function renderCmdList(listId, arr, arrName, label) {
+  const list = document.getElementById(listId);
+  list.innerHTML = '';
+  arr.forEach((cmd,i) => {
+    const row = document.createElement('div');
+    row.className = 'dynamic-row';
+    row.style.padding = '10px 14px';
+    row.innerHTML = `<div style="display:grid;grid-template-columns:32px 1fr auto;gap:8px;align-items:center">
+      <span style="font-size:0.75rem;color:var(--text-muted);text-align:center">${i+1}</span>
+      <input type="text" class="mono" value="${escA(cmd)}" placeholder="${label}..." oninput="${arrName}[${i}]=this.value">
+      <button class="btn btn-secondary btn-sm" onclick="${arrName}.splice(${i},1);renderCmdList('${listId}',${arrName},'${arrName}','${label}')">✕</button>
+    </div>`;
+    list.appendChild(row);
+  });
+  if (!arr.length) list.innerHTML = `<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0">No ${label.toLowerCase()}s configured.</p>`;
+}
+
+// ─── NTP ──────────────────────────────────────────────────────────────────────
+function onNtpToggle() {
+  document.getElementById('ntpOptions').style.display = document.getElementById('ntpEnabled').checked ? '' : 'none';
+}
+
+// ─── Review ───────────────────────────────────────────────────────────────────
+function renderReview() {
+  const v = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  const ch = id => { const el = document.getElementById(id); return el && el.checked; };
+  const rows = [
+    ['Distro', v('distroFamily')], ['Hostname', v('hostname')||'(not set)'], ['FQDN', v('fqdn')||'(not set)'],
+    ['Timezone', v('timezone')], ['Locale', v('locale')],
+    ['Disable Root', v('disableRoot')], ['SSH PW Auth', v('sshPwauth')],
+    ['Users', users.length ? users.map(u=>u.name).join(', ') : 'None'],
+    ['Global SSH Keys', document.getElementById('globalSshKeys').value.trim().split('\n').filter(Boolean).length + ' key(s)'],
+    ['Network Mode', v('netConfigMode')],
+    ['Interfaces', interfaces.length],
+    ['pkg update', ch('pkgUpdate')?'yes':'no'], ['pkg upgrade', ch('pkgUpgrade')?'yes':'no'],
+    ['Packages', packages.length],
+    ['APT Sources', aptSources.length], ['YUM Repos', yumRepos.length],
+    ['Mounts', mounts.length], ['Swap File', v('swapFile')||'none'],
+    ['Write Files', writeFiles.length], ['bootcmds', bootCmds.filter(Boolean).length],
+    ['runcmds', runCmds.filter(Boolean).length], ['NTP', ch('ntpEnabled')?'enabled':'disabled'],
+    ['Power State', v('powerState')||'none'],
+  ];
+  const c = document.getElementById('reviewSummary');
+  c.innerHTML = rows.map(([k,v]) => `<div class="review-item"><div class="review-item-key">${esc(k)}</div><div class="review-item-val">${esc(String(v))}</div></div>`).join('');
+}
+
+// ─── YAML helpers ─────────────────────────────────────────────────────────────
+const YAML_BOOLS = /^(true|false|yes|no|on|off|null|~)$/i;
+const YAML_SPECIAL = /[:#\[\]{},|>&*!?%@`\n\r\t]/;
+
+function yamlStr(s) {
+  if (s === null || s === undefined) return 'null';
+  s = String(s);
+  if (s === '') return "''";
+  if (YAML_BOOLS.test(s)) return `'${s}'`;
+  if (/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(s)) return `'${s}'`;
+  if (YAML_SPECIAL.test(s) || s.startsWith(' ') || s.endsWith(' ') || s.startsWith('-') || s.startsWith("'") || s.startsWith('"')) {
+    if (!s.includes("'")) return `'${s}'`;
+    return `"${s.replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\n/g,'\\n')}"`;
+  }
+  return s;
+}
+
+function blockScalar(content, baseIndent) {
+  const indent = ' '.repeat(baseIndent);
+  const lines = content.split('\n');
+  // If last char is newline, use |, else |-
+  const chomped = content.endsWith('\n') ? '|' : '|-';
+  return chomped + '\n' + lines.map(l => indent + l).join('\n');
+}
+
+function b64encode(str) {
+  try { return btoa(unescape(encodeURIComponent(str))); }
+  catch(e) { return btoa(str); }
+}
+
+function ind(n) { return ' '.repeat(n); }
+
+// ─── YAML generation ──────────────────────────────────────────────────────────
+function generateUserData() {
+  const v = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const ch = id => { const el = document.getElementById(id); return el && el.checked; };
+
+  let lines = ['#cloud-config'];
+  lines.push(`# Generated by Hatch — https://github.com/pages`);
+  lines.push(`# Generated: ${new Date().toISOString()}`);
+  lines.push(`# All generation happened locally in your browser. No data was transmitted.`);
+
+  // System basics
+  const hostname = v('hostname');
+  const fqdn = v('fqdn');
+  const manageHosts = v('manageEtcHosts');
+  const tz = v('timezone');
+  const locale = v('locale');
+
+  if (hostname) lines.push(`\nhostname: ${yamlStr(hostname)}`);
+  if (fqdn) {
+    lines.push(`fqdn: ${yamlStr(fqdn)}`);
+    lines.push(`prefer_fqdn_over_hostname: true`);
+  }
+  lines.push(`manage_etc_hosts: ${yamlStr(manageHosts)}`);
+  if (tz) lines.push(`timezone: ${yamlStr(tz)}`);
+  if (locale) lines.push(`locale: ${yamlStr(locale)}`);
+
+  // Auth globals
+  lines.push(`\ndisable_root: ${v('disableRoot')}`);
+  lines.push(`ssh_pwauth: ${v('sshPwauth')}`);
+
+  // Global SSH keys
+  const globalKeys = v('globalSshKeys').split('\n').map(k=>k.trim()).filter(Boolean);
+  if (globalKeys.length) {
+    lines.push(`\nssh_authorized_keys:`);
+    globalKeys.forEach(k => lines.push(`  - ${yamlStr(k)}`));
+  }
+
+  // Users
+  if (users.length) {
+    lines.push(`\nusers:`);
+    users.filter(u=>u.name).forEach(u => {
+      lines.push(`  - name: ${yamlStr(u.name)}`);
+      if (u.gecos) lines.push(`    gecos: ${yamlStr(u.gecos)}`);
+      if (u.groups) {
+        const grps = u.groups.split(',').map(g=>g.trim()).filter(Boolean);
+        lines.push(`    groups: [${grps.map(g=>yamlStr(g)).join(', ')}]`);
+      }
+      if (u.shell) lines.push(`    shell: ${yamlStr(u.shell)}`);
+      if (u.sudo) lines.push(`    sudo: ${yamlStr(u.sudo)}`);
+      lines.push(`    lock_passwd: ${u.lockPasswd}`);
+      if (u.passwd) {
+        lines.push(`    passwd: ${yamlStr(u.passwd)}`);
+      }
+      const keys = u.sshKeys.split('\n').map(k=>k.trim()).filter(Boolean);
+      if (keys.length) {
+        lines.push(`    ssh_authorized_keys:`);
+        keys.forEach(k => lines.push(`      - ${yamlStr(k)}`));
+      }
+      if (u.sshImportId) {
+        const ids = u.sshImportId.split(/[\s,]+/).filter(Boolean);
+        lines.push(`    ssh_import_id:`);
+        ids.forEach(id => lines.push(`      - ${yamlStr(id)}`));
+      }
+    });
+  }
+
+  // chpasswd
+  const chpasswdExpire = v('chpasswdExpire');
+  const chpasswdList = v('chpasswdList').trim();
+  if (chpasswdExpire || chpasswdList) {
+    lines.push(`\nchpasswd:`);
+    if (chpasswdExpire) lines.push(`  expire: ${chpasswdExpire}`);
+    if (chpasswdList) {
+      lines.push(`  users:`);
+      chpasswdList.split('\n').forEach(line => {
+        const [uname, ...rest] = line.trim().split(':');
+        if (uname) lines.push(`    - name: ${yamlStr(uname)}\n      password: ${yamlStr(rest.join(':'))}`);
+      });
+    }
+  }
+
+  // Packages
+  if (ch('pkgUpdate')) lines.push(`\npackage_update: true`);
+  if (ch('pkgUpgrade')) lines.push(`package_upgrade: true`);
+  if (ch('pkgReboot')) lines.push(`package_reboot_if_required: true`);
+
+  if (packages.length) {
+    lines.push(`\npackages:`);
+    packages.forEach(p => lines.push(`  - ${yamlStr(p)}`));
+  }
+
+  // APT
+  const aptProxy = v('aptProxy');
+  const validAptSources = aptSources.filter(s=>s.name&&s.source);
+  if (aptProxy || validAptSources.length) {
+    lines.push(`\napt:`);
+    if (aptProxy) lines.push(`  proxy: ${yamlStr(aptProxy)}`);
+    if (validAptSources.length) {
+      lines.push(`  sources:`);
+      validAptSources.forEach(s => {
+        lines.push(`    ${yamlStr(s.name)}:`);
+        lines.push(`      source: ${yamlStr(s.source)}`);
+        if (s.keyid) lines.push(`      keyid: ${yamlStr(s.keyid)}`);
+      });
+    }
+  }
+
+  // YUM repos
+  const validYumRepos = yumRepos.filter(r=>r.id&&r.baseurl);
+  if (validYumRepos.length) {
+    lines.push(`\nyum_repos:`);
+    validYumRepos.forEach(r => {
+      lines.push(`  ${yamlStr(r.id)}:`);
+      lines.push(`    name: ${yamlStr(r.name||r.id)}`);
+      lines.push(`    baseurl: ${yamlStr(r.baseurl)}`);
+      lines.push(`    enabled: ${r.enabled ? 1 : 0}`);
+      lines.push(`    gpgcheck: ${r.gpgcheck ? 1 : 0}`);
+      if (r.gpgkey) lines.push(`    gpgkey: ${yamlStr(r.gpgkey)}`);
+    });
+  }
+
+  // Mounts
+  const validMounts = mounts.filter(m=>m.device&&m.mountpoint);
+  if (validMounts.length) {
+    lines.push(`\nmounts:`);
+    validMounts.forEach(m => {
+      const opts = yamlStr(m.options||'defaults');
+      lines.push(`  - [${yamlStr(m.device)}, ${yamlStr(m.mountpoint)}, ${yamlStr(m.fstype)}, ${opts}, ${m.dump}, ${m.pass}]`);
+    });
+  }
+
+  // Swap
+  const swapFile = v('swapFile');
+  if (swapFile) {
+    lines.push(`\nswap:`);
+    lines.push(`  filename: ${yamlStr(swapFile)}`);
+    const swapSize = v('swapSize');
+    lines.push(`  size: ${swapSize==='auto'?'auto':swapSize}`);
+    const swapMax = v('swapMaxsize');
+    if (swapMax) lines.push(`  maxsize: ${swapMax}`);
+  }
+
+  // Write files
+  const validFiles = writeFiles.filter(f=>f.path);
+  if (validFiles.length) {
+    lines.push(`\nwrite_files:`);
+    validFiles.forEach(f => {
+      lines.push(`  - path: ${yamlStr(f.path)}`);
+      if (f.owner && f.owner !== 'root:root') lines.push(`    owner: ${yamlStr(f.owner)}`);
+      if (f.permissions) lines.push(`    permissions: '${f.permissions}'`);
+      if (f.append) lines.push(`    append: true`);
+      if (f.content) {
+        if (f.encoding === 'b64') {
+          lines.push(`    encoding: b64`);
+          lines.push(`    content: ${b64encode(f.content)}`);
+        } else {
+          const block = blockScalar(f.content.endsWith('\n') ? f.content : f.content + '\n', 6);
+          lines.push(`    content: ${block}`);
+        }
+      }
+    });
+  }
+
+  // bootcmd
+  const validBootCmds = bootCmds.filter(Boolean);
+  if (validBootCmds.length) {
+    lines.push(`\n# NOTE: bootcmd runs on EVERY boot. Commands must be idempotent.`);
+    lines.push(`bootcmd:`);
+    validBootCmds.forEach(cmd => lines.push(`  - ${yamlStr(cmd)}`));
+  }
+
+  // NTP
+  if (ch('ntpEnabled')) {
+    lines.push(`\nntp:`);
+    lines.push(`  enabled: true`);
+    const ntpClient = v('ntpClient');
+    if (ntpClient && ntpClient !== 'auto') lines.push(`  ntp_client: ${yamlStr(ntpClient)}`);
+    if (ntpServers.length) {
+      lines.push(`  servers:`);
+      ntpServers.forEach(s => lines.push(`    - ${yamlStr(s)}`));
+    }
+    if (ntpPools.length) {
+      lines.push(`  pools:`);
+      ntpPools.forEach(p => lines.push(`    - ${yamlStr(p)}`));
+    }
+  }
+
+  // runcmd
+  const validRunCmds = runCmds.filter(Boolean);
+  if (validRunCmds.length) {
+    lines.push(`\nruncmd:`);
+    validRunCmds.forEach(cmd => lines.push(`  - ${yamlStr(cmd)}`));
+  }
+
+  // Final message
+  const finalMsg = v('finalMessage');
+  if (finalMsg) {
+    const block = blockScalar(finalMsg.endsWith('\n') ? finalMsg : finalMsg + '\n', 2);
+    lines.push(`\nfinal_message: ${block}`);
+  }
+
+  // Power state
+  const powerState = v('powerState');
+  if (powerState) {
+    lines.push(`\npower_state:`);
+    lines.push(`  mode: ${yamlStr(powerState)}`);
+    const delay = v('powerDelay');
+    if (delay) lines.push(`  delay: ${yamlStr(delay)}`);
+    lines.push(`  timeout: 30`);
+  }
+
+  return lines.join('\n');
+}
+
+function generateNetworkConfig() {
+  if (document.getElementById('netConfigMode').value !== 'v2') return null;
+  if (!interfaces.length && !globalDns.length) return null;
+
+  const renderer = document.getElementById('netRenderer').value;
+  let lines = [`# network-config — cloud-init Network v2 (Netplan format)`];
+  lines.push(`# Generated: ${new Date().toISOString()}`);
+  lines.push(`network:`);
+  lines.push(`  version: 2`);
+  lines.push(`  renderer: ${yamlStr(renderer)}`);
+
+  if (interfaces.length) {
+    lines.push(`  ethernets:`);
+    interfaces.forEach(iface => {
+      if (!iface.name) return;
+      lines.push(`    ${yamlStr(iface.name)}:`);
+      if (iface.dhcp4) {
+        lines.push(`      dhcp4: true`);
+      } else {
+        lines.push(`      dhcp4: false`);
+        if (iface.ip) lines.push(`      addresses: [${yamlStr(iface.ip)}]`);
+        if (iface.gw) lines.push(`      gateway4: ${yamlStr(iface.gw)}`);
+      }
+      if (globalDns.length || globalDnsSearch.length) {
+        lines.push(`      nameservers:`);
+        if (globalDns.length) lines.push(`        addresses: [${globalDns.map(d=>yamlStr(d)).join(', ')}]`);
+        if (globalDnsSearch.length) lines.push(`        search: [${globalDnsSearch.map(s=>yamlStr(s)).join(', ')}]`);
+      }
+    });
+  }
+
+  return lines.join('\n');
+}
+
+function generateAll() {
+  const userData = generateUserData();
+  const networkCfg = generateNetworkConfig();
+
+  document.getElementById('userDataOutput').textContent = userData;
+  window.generatedUserData = userData;
+  window.generatedNetworkCfg = networkCfg;
+
+  document.getElementById('outputArea').style.display = '';
+
+  if (networkCfg) {
+    document.getElementById('networkOutput').textContent = networkCfg;
+    document.getElementById('networkOutputCard').style.display = '';
+  } else {
+    document.getElementById('networkOutputCard').style.display = 'none';
+  }
+
+  window.scrollTo(0, document.getElementById('outputArea').offsetTop - 80);
+}
+
+function downloadFile(outputId, filename) {
+  const content = document.getElementById(outputId).textContent;
+  if (!content) return;
+  const blob = new Blob([content], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function copyOutput(outputId) {
+  const content = document.getElementById(outputId).textContent;
+  if (!content) return;
+  navigator.clipboard.writeText(content).then(() => {
+    const fb = document.getElementById('copyFeedback');
+    fb.classList.add('show');
+    setTimeout(() => fb.classList.remove('show'), 2000);
+  });
+}
+
+// ─── Utility ──────────────────────────────────────────────────────────────────
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escA(s) { return esc(s).replace(/"/g,'&quot;'); }
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+init();
+renderUsers();
+renderInterfaces();
+renderMounts();
+renderWriteFiles();
+renderCmdList('bootcmdList', bootCmds, 'bootCmds', 'Boot command');
+renderCmdList('runcmdList', runCmds, 'runCmds', 'Command');
+renderAptSources();
+renderYumRepos();
+</script>
+</body>
+</html>

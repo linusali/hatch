@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hatch — Config Generators</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface2: #0f3460;
+    --accent: #0078d4;
+    --text: #e8e8e8;
+    --text-muted: #9a9aaa;
+    --border: #2a2a4a;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .header-brand { display: flex; align-items: center; gap: 14px; }
+  header h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.5px; }
+  header h1 span { color: #facc15; }
+  header p { color: var(--text-muted); font-size: 0.85rem; margin-top: 2px; }
+  .privacy-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    background: #0a2010;
+    border: 1px solid #107c10;
+    color: #4caf50;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+  }
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 16px;
+  }
+  .tagline {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    margin-bottom: 40px;
+    text-align: center;
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 380px));
+    gap: 24px;
+    justify-content: center;
+    width: 100%;
+    max-width: 820px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px 28px;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--card-accent, var(--accent));
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .card:hover {
+    border-color: var(--card-accent, var(--accent));
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+  .card:hover::before { opacity: 1; }
+  .card-windows { --card-accent: #0078d4; }
+  .card-cloudinit { --card-accent: #e8720c; }
+  .card-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    margin-bottom: 4px;
+  }
+  .icon-windows { background: rgba(0,120,212,0.15); }
+  .icon-cloudinit { background: rgba(232,114,12,0.15); }
+  .card h2 { font-size: 1.15rem; font-weight: 700; }
+  .card p { font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; }
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .tag {
+    font-size: 0.72rem;
+    padding: 2px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    background: var(--bg);
+  }
+  .card-arrow {
+    margin-top: auto;
+    padding-top: 16px;
+    font-size: 0.85rem;
+    color: var(--card-accent, var(--accent));
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <svg width="52" height="52" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="egT" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#32325e"/><stop offset="100%" stop-color="#1c1c38"/>
+        </linearGradient>
+        <linearGradient id="egB" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#26263e"/><stop offset="100%" stop-color="#141428"/>
+        </linearGradient>
+        <radialGradient id="egG" cx="50%" cy="50%" r="60%">
+          <stop offset="0%" stop-color="#ffcc70"/><stop offset="100%" stop-color="#ff8020" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <path d="M8 25C8 39 15 47 24 47C33 47 40 39 40 25Z" fill="url(#egB)" stroke="#3d3d62" stroke-width="1.5"/>
+      <ellipse cx="24" cy="22" rx="14" ry="5" fill="url(#egG)"/>
+      <path d="M8 25C8 11 14 3 24 3C34 3 40 11 40 25Z" fill="url(#egT)" stroke="#3d3d62" stroke-width="1.5" transform="translate(0,-3)"/>
+      <path d="M9 23L14 19L19 24L23 18L27 24L32 19L37 23L40 21" stroke="#facc15" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <h1><span>H</span>atch</h1>
+      <p>Config generators for automated OS deployment</p>
+    </div>
+  </div>
+  <div class="privacy-note">🔒 Fully local — no data is ever sent to any server</div>
+</header>
+
+<main>
+  <p class="tagline">Choose a tool to get started</p>
+  <div class="cards">
+
+    <a class="card card-windows" href="sysprep.html">
+      <div class="card-icon icon-windows">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <rect x="2" y="2" width="13" height="13" fill="#0078d4"/>
+          <rect x="17" y="2" width="13" height="13" fill="#0078d4"/>
+          <rect x="2" y="17" width="13" height="13" fill="#0078d4"/>
+          <rect x="17" y="17" width="13" height="13" fill="#0078d4"/>
+        </svg>
+      </div>
+      <h2>Windows Sysprep Generator</h2>
+      <p>Generate <code>autounattend.xml</code> for fully automated, unattended Windows installation. Configure editions, partitioning, accounts, domain join, OOBE, privacy, and post-setup commands.</p>
+      <div class="card-tags">
+        <span class="tag">Windows 10 / 11</span>
+        <span class="tag">Server 2016–2025</span>
+        <span class="tag">UEFI &amp; BIOS</span>
+        <span class="tag">Domain Join</span>
+        <span class="tag">WDS</span>
+      </div>
+      <div class="card-arrow">Open generator →</div>
+    </a>
+
+    <a class="card card-cloudinit" href="cloudinit.html">
+      <div class="card-icon icon-cloudinit">☁️</div>
+      <h2>Cloud-Init Config Generator</h2>
+      <p>Generate <code>user-data</code> and <code>network-config</code> for cloud-init. Configure users, SSH keys, networking, packages, storage mounts, files, and run commands for Linux cloud instances.</p>
+      <div class="card-tags">
+        <span class="tag">Ubuntu / Debian</span>
+        <span class="tag">RHEL / Rocky</span>
+        <span class="tag">Amazon Linux</span>
+        <span class="tag">SUSE</span>
+        <span class="tag">NoCloud / AWS / Azure</span>
+      </div>
+      <div class="card-arrow">Open generator →</div>
+    </a>
+
+  </div>
+</main>
+
+<footer>
+  All generation happens in your browser. No data leaves your machine.
+</footer>
+
+</body>
+</html>
