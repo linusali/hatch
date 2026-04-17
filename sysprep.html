@@ -1042,7 +1042,14 @@ function renderStepIndicator() {
     const pill = document.createElement('button');
     pill.className = 'step-pill' + (i === currentStep ? ' active' : i < currentStep ? ' done' : '');
     pill.textContent = (i < currentStep ? '✓ ' : '') + name;
-    pill.onclick = () => { if (i <= currentStep) { currentStep = i; renderStep(); } };
+    pill.onclick = () => {
+      if (i <= currentStep) {
+        if (currentStep === STEPS.length - 1 && i < currentStep) {
+          document.getElementById('xmlOutputCard').style.display = 'none';
+        }
+        currentStep = i; renderStep(); window.scrollTo(0,0);
+      }
+    };
     container.appendChild(pill);
   });
 }
@@ -1051,6 +1058,9 @@ function nextStep() {
   if (currentStep < STEPS.length - 1) { currentStep++; renderStep(); window.scrollTo(0,0); }
 }
 function prevStep() {
+  if (currentStep === STEPS.length - 1) {
+    document.getElementById('xmlOutputCard').style.display = 'none';
+  }
   if (currentStep > 0) { currentStep--; renderStep(); window.scrollTo(0,0); }
 }
 
