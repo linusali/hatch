@@ -610,14 +610,6 @@ header h1 { font-size: 1.2rem; font-weight: 600; }
         </div>
       </div>
 
-      <div class="card" style="border-color:#3a1a2e">
-        <h2>🔴 OpenShift Virtualization — Console Script</h2>
-        <p class="subtitle">Generate cloud-init YAML formatted for paste into the OpenShift Virtualization console.</p>
-        <div class="output-actions" style="margin-bottom:0">
-          <button class="btn btn-primary btn-lg" onclick="generateForOCP()">⚡ Generate for OCP Console</button>
-        </div>
-      </div>
-
       <div class="card" id="ocpOutputCard" style="display:none">
         <h2>🔴 OCP Console YAML</h2>
         <p class="subtitle">In the OpenShift console VM wizard: <strong>Customize VirtualMachine → Scripts tab → Cloud-init → Script</strong> — select <strong>Script</strong> view (not Form), then paste below.</p>
@@ -631,6 +623,7 @@ header h1 { font-size: 1.2rem; font-weight: 600; }
     <div class="nav-buttons">
       <button class="btn btn-secondary" onclick="prevStep()">← Back</button>
       <button class="btn btn-primary btn-lg" onclick="generateAll()">⚡ Generate Config</button>
+      <button class="btn btn-lg" style="background:#7b1fa2;border-color:#7b1fa2;color:#fff" onclick="generateForOCP()">🔴 Generate for OCP Console</button>
     </div>
   </div>
 
@@ -1406,12 +1399,15 @@ function generateOCPConsoleYAML(userData, networkCfg) {
 }
 
 function generateForOCP() {
-  const userData = window.generatedUserData;
-  const networkCfg = window.generatedNetworkCfg;
-  if (!userData) return;
+  const userData = generateUserData();
+  const networkCfg = generateNetworkConfig();
+  window.generatedUserData = userData;
+  window.generatedNetworkCfg = networkCfg;
   const ocpYaml = generateOCPConsoleYAML(userData, networkCfg);
   document.getElementById('ocpOutput').textContent = ocpYaml;
   document.getElementById('ocpOutputCard').style.display = '';
+  // Hide the standard output if it was showing from a previous generateAll()
+  document.getElementById('outputArea').style.display = 'none';
   window.scrollTo(0, document.getElementById('ocpOutputCard').offsetTop - 80);
 }
 
