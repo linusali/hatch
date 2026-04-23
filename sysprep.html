@@ -1224,7 +1224,7 @@ function generateXML() {
 
   const arch = val('winArch');
   const firmware = val('firmwareType');
-  const productKey = val('productKey').replace(/-/g,'').replace(/(.{5})/g,'$1-').slice(0,-1);
+  const productKey = val('productKey').replace(/-/g,'').replace(/(.{5})(?!$)/g,'$1-');
   const uiLang = val('uiLanguage');
   const sysLocale = val('systemLocale');
   const keyboard = val('keyboardLayout');
@@ -1267,20 +1267,35 @@ function generateXML() {
       }
     } else if (layout === 'recommended') {
       if (isUEFI) {
-        create = `<CreatePartition wcm:action="add"><Order>1</Order><Type>EFI</Type><Size>260</Size></CreatePartition>
+        if (winPartSize > 0) {
+          create = `<CreatePartition wcm:action="add"><Order>1</Order><Type>EFI</Type><Size>260</Size></CreatePartition>
               <CreatePartition wcm:action="add"><Order>2</Order><Type>MSR</Type><Size>16</Size></CreatePartition>
-              <CreatePartition wcm:action="add"><Order>3</Order><Type>Primary</Type>${winPartSize>0?`<Size>${winPartSize}</Size>`:'<Extend>false</Extend>'}</CreatePartition>
-              <CreatePartition wcm:action="add"><Order>4</Order><Type>Primary</Type>${winPartSize>0?'<Extend>true</Extend>':'<Size>500</Size>'}</CreatePartition>`;
-        modify = `<ModifyPartition wcm:action="add"><Order>1</Order><PartitionID>1</PartitionID><Label>System</Label><Format>FAT32</Format></ModifyPartition>
+              <CreatePartition wcm:action="add"><Order>3</Order><Type>Primary</Type><Size>${winPartSize}</Size></CreatePartition>
+              <CreatePartition wcm:action="add"><Order>4</Order><Type>Primary</Type><Size>500</Size></CreatePartition>`;
+          modify = `<ModifyPartition wcm:action="add"><Order>1</Order><PartitionID>1</PartitionID><Label>System</Label><Format>FAT32</Format></ModifyPartition>
               <ModifyPartition wcm:action="add"><Order>2</Order><PartitionID>3</PartitionID><Label>Windows</Label><Format>NTFS</Format><Letter>${winDriveLetter}</Letter></ModifyPartition>
               <ModifyPartition wcm:action="add"><Order>3</Order><PartitionID>4</PartitionID><Label>Recovery</Label><Format>NTFS</Format><TypeID>de94bba4-06d1-4d40-a16a-bfd50179d6ac</TypeID></ModifyPartition>`;
+        } else {
+          create = `<CreatePartition wcm:action="add"><Order>1</Order><Type>EFI</Type><Size>260</Size></CreatePartition>
+              <CreatePartition wcm:action="add"><Order>2</Order><Type>MSR</Type><Size>16</Size></CreatePartition>
+              <CreatePartition wcm:action="add"><Order>3</Order><Type>Primary</Type><Extend>true</Extend></CreatePartition>`;
+          modify = `<ModifyPartition wcm:action="add"><Order>1</Order><PartitionID>1</PartitionID><Label>System</Label><Format>FAT32</Format></ModifyPartition>
+              <ModifyPartition wcm:action="add"><Order>2</Order><PartitionID>3</PartitionID><Label>Windows</Label><Format>NTFS</Format><Letter>${winDriveLetter}</Letter></ModifyPartition>`;
+        }
       } else {
-        create = `<CreatePartition wcm:action="add"><Order>1</Order><Type>Primary</Type><Size>350</Size></CreatePartition>
-              <CreatePartition wcm:action="add"><Order>2</Order><Type>Primary</Type>${winPartSize>0?`<Size>${winPartSize}</Size>`:'<Extend>false</Extend>'}</CreatePartition>
-              <CreatePartition wcm:action="add"><Order>3</Order><Type>Primary</Type>${winPartSize>0?'<Extend>true</Extend>':'<Size>500</Size>'}</CreatePartition>`;
-        modify = `<ModifyPartition wcm:action="add"><Order>1</Order><PartitionID>1</PartitionID><Label>System Reserved</Label><Format>NTFS</Format><Active>true</Active></ModifyPartition>
+        if (winPartSize > 0) {
+          create = `<CreatePartition wcm:action="add"><Order>1</Order><Type>Primary</Type><Size>350</Size></CreatePartition>
+              <CreatePartition wcm:action="add"><Order>2</Order><Type>Primary</Type><Size>${winPartSize}</Size></CreatePartition>
+              <CreatePartition wcm:action="add"><Order>3</Order><Type>Primary</Type><Size>500</Size></CreatePartition>`;
+          modify = `<ModifyPartition wcm:action="add"><Order>1</Order><PartitionID>1</PartitionID><Label>System Reserved</Label><Format>NTFS</Format><Active>true</Active></ModifyPartition>
               <ModifyPartition wcm:action="add"><Order>2</Order><PartitionID>2</PartitionID><Label>Windows</Label><Format>NTFS</Format><Letter>${winDriveLetter}</Letter></ModifyPartition>
               <ModifyPartition wcm:action="add"><Order>3</Order><PartitionID>3</PartitionID><Label>Recovery</Label><Format>NTFS</Format></ModifyPartition>`;
+        } else {
+          create = `<CreatePartition wcm:action="add"><Order>1</Order><Type>Primary</Type><Size>350</Size></CreatePartition>
+              <CreatePartition wcm:action="add"><Order>2</Order><Type>Primary</Type><Extend>true</Extend></CreatePartition>`;
+          modify = `<ModifyPartition wcm:action="add"><Order>1</Order><PartitionID>1</PartitionID><Label>System Reserved</Label><Format>NTFS</Format><Active>true</Active></ModifyPartition>
+              <ModifyPartition wcm:action="add"><Order>2</Order><PartitionID>2</PartitionID><Label>Windows</Label><Format>NTFS</Format><Letter>${winDriveLetter}</Letter></ModifyPartition>`;
+        }
       }
     } else {
       customPartitions.forEach((p, i) => {
@@ -1300,8 +1315,7 @@ function generateXML() {
   const driverPathsXml = driverPaths.length ? `<DriverPaths>${driverPaths.map((p,i) =>
     `\n          <PathAndCredentials wcm:action="add" wcm:keyValue="${i+1}"><Path>${escXml(p)}</Path></PathAndCredentials>`).join('')}\n      </DriverPaths>` : '';
 
-  const localAccountsXml = localUsers.filter(u=>u.name).length ? `
-        <UserAccounts>
+  const localAccountsInner = localUsers.filter(u=>u.name).length ? `
           <LocalAccounts>${localUsers.filter(u=>u.name).map(u => `
             <LocalAccount wcm:action="add">
               <Password><Value>${escXml(u.password)}</Value><PlainText>true</PlainText></Password>
@@ -1309,15 +1323,14 @@ function generateXML() {
               <Group>${escXml(u.group)}</Group>
               <Name>${escXml(u.name)}</Name>
             </LocalAccount>`).join('')}
-          </LocalAccounts>
-        </UserAccounts>` : '';
-
-  const adminXml = adminMode !== 'disable' ? `
-        <UserAccounts>
+          </LocalAccounts>` : '';
+  const adminInner = adminMode !== 'disable' ? `
           <AdministratorPassword>
             <Value>${escXml(adminPwd)}</Value>
             <PlainText>true</PlainText>
-          </AdministratorPassword>
+          </AdministratorPassword>` : '';
+  const userAccountsXml = (localAccountsInner || adminInner) ? `
+        <UserAccounts>${localAccountsInner}${adminInner}
         </UserAccounts>` : '';
 
   const autoLogonXml = autoLogonUser ? `
@@ -1342,8 +1355,7 @@ function generateXML() {
   if (ch('disableCortana')) allSpecCmds.push('cmd /c reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search" /v AllowCortana /t REG_DWORD /d 0 /f');
   if (ch('disableOneDrive')) allSpecCmds.push('cmd /c reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\OneDrive" /v DisableFileSyncNGSC /t REG_DWORD /d 1 /f');
   if (ch('disableUAC')) allSpecCmds.push('cmd /c reg add "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v EnableLUA /t REG_DWORD /d 0 /f');
-  if (ch('showExtensions')) allSpecCmds.push('cmd /c reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced" /v HideFileExt /t REG_DWORD /d 0 /f');
-  if (ch('showHidden')) allSpecCmds.push('cmd /c reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced" /v Hidden /t REG_DWORD /d 1 /f');
+  // showExtensions and showHidden write to HKCU — must run on first logon as the actual user, not during specialize as SYSTEM
   if (ch('disableHibernation')) allSpecCmds.push('cmd /c powercfg /hibernate off');
   if (ch('highPerformance')) allSpecCmds.push('cmd /c powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c');
   if (ch('enableDotNet35')) allSpecCmds.push('cmd /c dism /online /enable-feature /featurename:NetFx3 /all /norestart');
@@ -1358,7 +1370,10 @@ function generateXML() {
         </RunSynchronousCommand>`).join('')}
       </RunSynchronous>` : '';
 
-  const validFirstLogon = firstLogonCommands.filter(Boolean);
+  const extraFirstLogon = [];
+  if (ch('showExtensions')) extraFirstLogon.push('cmd /c reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced" /v HideFileExt /t REG_DWORD /d 0 /f');
+  if (ch('showHidden')) extraFirstLogon.push('cmd /c reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced" /v Hidden /t REG_DWORD /d 1 /f');
+  const validFirstLogon = [...firstLogonCommands.filter(Boolean), ...extraFirstLogon];
   const firstLogonXml = validFirstLogon.length ? `
       <FirstLogonCommands>${validFirstLogon.map((cmd,i) => `
         <SynchronousCommand wcm:action="add">
@@ -1483,8 +1498,7 @@ function generateXML() {
                publicKeyToken="31bf3856ad364e35"
                language="neutral"
                versionScope="nonSxS">${oobeXml}${autoLogonXml}
-      ${localAccountsXml}
-      ${adminMode !== 'disable' ? adminXml : ''}${firstLogonXml}
+      ${userAccountsXml}${firstLogonXml}
     </component>
   </settings>
 
@@ -1508,10 +1522,13 @@ function downloadXML() {
 
 function copyXML() {
   if (!window.generatedXML) return;
-  navigator.clipboard.writeText(window.generatedXML).then(() => {
-    const fb = document.getElementById('copyFeedback');
-    fb.classList.add('show');
-    setTimeout(() => fb.classList.remove('show'), 2000);
+  const showFeedback = () => { const fb = document.getElementById('copyFeedback'); fb.classList.add('show'); setTimeout(() => fb.classList.remove('show'), 2000); };
+  navigator.clipboard.writeText(window.generatedXML).then(showFeedback).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = window.generatedXML;
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    showFeedback();
   });
 }
 

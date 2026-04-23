@@ -995,10 +995,10 @@ function renderWriteFiles() {
     const row = document.createElement('div');
     row.className = 'dynamic-row';
     row.innerHTML = `
-      <div class="dynamic-row-header"><span class="dynamic-row-title">${esc(f.path)||'New File'}</span>
+      <div class="dynamic-row-header"><span class="dynamic-row-title" id="wft${i}">${esc(f.path)||'New File'}</span>
         <button class="btn btn-secondary btn-sm" onclick="removeWriteFile(${i})">Remove</button></div>
       <div class="form-grid">
-        <div class="form-group"><label>Path <span class="req">*</span></label><input type="text" class="mono" value="${escA(f.path)}" placeholder="/etc/myapp/config.toml" oninput="writeFiles[${i}].path=this.value;renderWriteFiles()"></div>
+        <div class="form-group"><label>Path <span class="req">*</span></label><input type="text" class="mono" value="${escA(f.path)}" placeholder="/etc/myapp/config.toml" oninput="writeFiles[${i}].path=this.value; var t=document.getElementById('wft${i}'); if(t) t.textContent=this.value||'New File'"></div>
         <div class="form-group"><label>Owner</label><input type="text" value="${escA(f.owner)}" placeholder="root:root" oninput="writeFiles[${i}].owner=this.value"></div>
         <div class="form-group"><label>Permissions</label><input type="text" class="mono" value="${escA(f.permissions)}" placeholder="0644" maxlength="4" oninput="writeFiles[${i}].permissions=this.value"></div>
         <div class="form-group"><label>Encoding</label>
@@ -1341,7 +1341,11 @@ function generateNetworkConfig() {
       } else {
         lines.push(`      dhcp4: false`);
         if (iface.ip) lines.push(`      addresses: [${yamlStr(iface.ip)}]`);
-        if (iface.gw) lines.push(`      gateway4: ${yamlStr(iface.gw)}`);
+        if (iface.gw) {
+          lines.push(`      routes:`);
+          lines.push(`        - to: default`);
+          lines.push(`          via: ${yamlStr(iface.gw)}`);
+        }
       }
       if (globalDns.length || globalDnsSearch.length) {
         lines.push(`      nameservers:`);
@@ -1424,10 +1428,13 @@ function downloadFile(outputId, filename) {
 function copyOutput(outputId) {
   const content = document.getElementById(outputId).textContent;
   if (!content) return;
-  navigator.clipboard.writeText(content).then(() => {
-    const fb = document.getElementById('copyFeedback');
-    fb.classList.add('show');
-    setTimeout(() => fb.classList.remove('show'), 2000);
+  const showFeedback = () => { const fb = document.getElementById('copyFeedback'); fb.classList.add('show'); setTimeout(() => fb.classList.remove('show'), 2000); };
+  navigator.clipboard.writeText(content).then(showFeedback).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = content;
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    showFeedback();
   });
 }
 
