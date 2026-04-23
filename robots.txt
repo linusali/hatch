@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://bootsha.net/hatch/sitemap.xml
