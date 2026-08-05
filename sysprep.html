@@ -13,18 +13,18 @@
 <meta property="og:type" content="website">
 <style>
   :root {
-    --bg: #1a1a2e;
-    --surface: #16213e;
-    --surface2: #0f3460;
-    --accent: #0078d4;
-    --accent-hover: #106ebe;
-    --text: #e8e8e8;
-    --text-muted: #9a9aaa;
-    --border: #2a2a4a;
-    --success: #107c10;
+    --bg: #0d1015;
+    --surface: #151920;
+    --surface2: #12151c;
+    --accent: #4f7cff;
+    --accent-hover: #3d68f0;
+    --text: #e6e9ef;
+    --text-muted: #8b93a3;
+    --border: #262c38;
+    --success: #22c55e;
     --warning: #ff8c00;
-    --error: #c50f1f;
-    --radius: 8px;
+    --error: #ef4444;
+    --radius: 10px;
     --shadow: 0 2px 8px rgba(0,0,0,0.25);
     --shadow-lg: 0 6px 20px rgba(0,0,0,0.35);
   }
@@ -111,7 +111,7 @@
     color: var(--text-muted);
     transition: all 0.2s;
   }
-  .step-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 2px 10px rgba(0,120,212,0.4); }
+  .step-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 2px 10px rgba(79,124,255,0.4); }
   .step-pill.done { background: #0a3020; border-color: #107c10; color: #4caf50; }
   .card {
     background: var(--surface);
@@ -168,7 +168,7 @@
     transition: border-color 0.2s;
     outline: none;
   }
-  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,120,212,0.15); }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,124,255,0.15); }
   select option { background: #1a1a2e; }
   textarea { resize: vertical; min-height: 80px; }
   .toggle-row {
@@ -221,7 +221,7 @@
     align-items: center;
     transition: border-color 0.2s;
   }
-  .tag-input-container:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,120,212,0.15); }
+  .tag-input-container:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,124,255,0.15); }
   .tag {
     background: var(--surface2);
     border: 1px solid var(--accent);
@@ -258,8 +258,8 @@
   }
   .btn:active { transform: translateY(1px); }
   .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(0,120,212,0.35); }
-  .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,120,212,0.45); }
+  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(79,124,255,0.35); }
+  .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(79,124,255,0.45); }
   .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
   .btn-secondary:hover { border-color: var(--accent); transform: translateY(-1px); }
   .btn-success { background: var(--success); color: #fff; }
@@ -294,12 +294,12 @@
     tab-size: 2;
   }
   .info-box {
-    background: rgba(0,120,212,0.08);
-    border: 1px solid rgba(0,120,212,0.3);
+    background: rgba(79,124,255,0.08);
+    border: 1px solid rgba(79,124,255,0.3);
     border-radius: var(--radius);
     padding: 12px 16px;
     font-size: 0.82rem;
-    color: #79b8e8;
+    color: #9db4ff;
     margin-bottom: 16px;
     display: flex;
     gap: 10px;
@@ -343,7 +343,7 @@
     align-items: center;
     transition: border-color 0.2s;
   }
-  .partition-row:hover { border-color: rgba(0,120,212,0.35); }
+  .partition-row:hover { border-color: rgba(79,124,255,0.35); }
   .partition-type-badge {
     font-size: 0.72rem;
     padding: 2px 8px;
@@ -352,7 +352,7 @@
     font-weight: 600;
   }
   .badge-system { background: rgba(255,140,0,0.15); color: #ff8c00; border: 1px solid rgba(255,140,0,0.3); }
-  .badge-primary { background: rgba(0,120,212,0.15); color: #0078d4; border: 1px solid rgba(0,120,212,0.3); }
+  .badge-primary { background: rgba(79,124,255,0.15); color: var(--accent); border: 1px solid rgba(79,124,255,0.3); }
   .badge-data { background: rgba(16,124,16,0.15); color: #107c10; border: 1px solid rgba(16,124,16,0.3); }
   .badge-recovery { background: rgba(197,15,31,0.15); color: #c50f1f; border: 1px solid rgba(197,15,31,0.3); }
   .commands-list { display: flex; flex-direction: column; gap: 8px; }
@@ -367,7 +367,7 @@
     padding: 8px 12px;
     transition: border-color 0.2s;
   }
-  .command-row:hover { border-color: rgba(0,120,212,0.35); }
+  .command-row:hover { border-color: rgba(79,124,255,0.35); }
   .command-order { font-size: 0.75rem; color: var(--text-muted); text-align: center; }
   .copy-feedback {
     position: fixed;
@@ -433,7 +433,7 @@
   <!-- STEP 1: Windows Edition -->
   <div class="step-section" id="step-0">
     <div class="card">
-      <h2>🖥️ Windows Edition &amp; Architecture</h2>
+      <h2>Windows Edition &amp; Architecture</h2>
       <p class="subtitle">Select the Windows version and edition you are deploying.</p>
       <div class="form-grid">
         <div class="form-group">
@@ -486,7 +486,7 @@
   <!-- STEP 2: Language & Regional -->
   <div class="step-section section-hidden" id="step-1">
     <div class="card">
-      <h2>🌐 Language &amp; Regional Settings</h2>
+      <h2>Language &amp; Regional Settings</h2>
       <p class="subtitle">Configure locale, keyboard layout, and time zone.</p>
       <div class="form-grid">
         <div class="form-group">
@@ -599,7 +599,7 @@
   <!-- STEP 3: Disk & Partitioning -->
   <div class="step-section section-hidden" id="step-2">
     <div class="card">
-      <h2>💾 Disk &amp; Partitioning</h2>
+      <h2>Disk &amp; Partitioning</h2>
       <p class="subtitle">Configure disk selection and partition layout.</p>
       <div class="warn-box">⚠️ The generated XML will wipe the selected disk. Double-check disk numbers in your environment before deploying.</div>
       <div class="form-grid">
@@ -641,7 +641,7 @@
   <!-- STEP 4: Administrator Account -->
   <div class="step-section section-hidden" id="step-3">
     <div class="card">
-      <h2>👤 Administrator &amp; User Accounts</h2>
+      <h2>Administrator &amp; User Accounts</h2>
       <p class="subtitle">Configure the built-in administrator and initial user accounts.</p>
       <div class="form-grid">
         <div class="form-group">
@@ -685,7 +685,7 @@
   <!-- STEP 5: Computer & Network -->
   <div class="step-section section-hidden" id="step-4">
     <div class="card">
-      <h2>🌐 Computer Name &amp; Network</h2>
+      <h2>Computer Name &amp; Network</h2>
       <p class="subtitle">Configure computer name and workgroup or domain settings.</p>
       <div class="form-grid">
         <div class="form-group">
@@ -726,7 +726,7 @@
   <!-- STEP 6: OOBE & Privacy -->
   <div class="step-section section-hidden" id="step-5">
     <div class="card">
-      <h2>⚙️ OOBE &amp; Setup Options</h2>
+      <h2>OOBE &amp; Setup Options</h2>
       <p class="subtitle">Out-of-box experience and first-run setup behavior.</p>
       <div class="toggle-row">
         <div>
@@ -779,7 +779,7 @@
       </div>
     </div>
     <div class="card">
-      <h2>🔒 Privacy &amp; Telemetry</h2>
+      <h2>Privacy &amp; Telemetry</h2>
       <p class="subtitle">Control data collection and privacy settings.</p>
       <div class="toggle-row">
         <div>
@@ -815,7 +815,7 @@
   <!-- STEP 7: First Run Commands -->
   <div class="step-section section-hidden" id="step-6">
     <div class="card">
-      <h2>🚀 First-Run Commands</h2>
+      <h2>First-Run Commands</h2>
       <p class="subtitle">Commands to run automatically after Windows setup completes.</p>
       <div class="info-box">ℹ️ Specialize commands run before user logon (as SYSTEM). First-logon commands run on first user logon. Use absolute paths. Order matters.</div>
 
@@ -833,7 +833,7 @@
     </div>
 
     <div class="card">
-      <h2>📦 Common Quick-Add Commands</h2>
+      <h2>Common Quick-Add Commands</h2>
       <p class="subtitle">Click to add commonly used setup commands.</p>
       <div style="display:flex; flex-wrap:wrap; gap:8px;">
         <button class="btn btn-secondary" onclick="quickAdd('cmd /c powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Set-ExecutionPolicy RemoteSigned -Force&quot;', 'specialize')">Enable PS Scripts</button>
@@ -849,7 +849,7 @@
   <!-- STEP 8: Advanced Options -->
   <div class="step-section section-hidden" id="step-7">
     <div class="card">
-      <h2>🔧 Advanced Options</h2>
+      <h2>Advanced Options</h2>
       <p class="subtitle">Additional configuration for enterprise deployments.</p>
       <div class="form-grid">
         <div class="form-group">
@@ -937,12 +937,12 @@
   <!-- STEP 9: Review & Generate -->
   <div class="step-section section-hidden" id="step-8">
     <div class="card">
-      <h2>✅ Review &amp; Generate XML</h2>
+      <h2>Review &amp; Generate XML</h2>
       <p class="subtitle">Review your configuration and generate the autounattend.xml file.</p>
       <div id="reviewSummary"></div>
     </div>
     <div class="card" id="xmlOutputCard" style="display:none">
-      <h2>📄 Generated autounattend.xml</h2>
+      <h2>Generated autounattend.xml</h2>
       <p class="subtitle">Copy this content into a file named <code>autounattend.xml</code> and place it in the root of your installation media.</p>
       <pre class="xml-output" id="xmlOutput"></pre>
       <div class="output-actions">
