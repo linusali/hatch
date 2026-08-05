@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50,6 L87,27 L87,73 L50,94 L13,73 L13,27 Z' fill='%231c2340'/%3E%3Crect x='21' y='46' width='58' height='9' rx='4.5' fill='%234f7cff'/%3E%3Ccircle cx='26' cy='24' r='4.5' fill='%234f7cff'/%3E%3Ccircle cx='74' cy='76' r='4.5' fill='%234f7cff'/%3E%3C/svg%3E">
 <title>Hatch — Cloud-Init Config Generator (user-data &amp; network-config)</title>
 <meta name="description" content="Generate cloud-init user-data and network-config for automated Linux cloud instance setup. Configure users, SSH keys, networking, packages, storage mounts, and run commands. Supports Ubuntu, Debian, RHEL, Rocky, Amazon Linux, and SUSE. Free, runs entirely in your browser.">
 <meta name="keywords" content="cloud-init generator, user-data generator, cloud-init config, network-config, cloud-init yaml, ubuntu cloud-init, ec2 user-data, OpenShift cloud-init">
@@ -72,7 +73,7 @@ header h1 { font-size: 1.2rem; font-weight: 600; }
     transition: color 0.2s, border-color 0.2s;
   }
   .home-link:hover { color: var(--text); border-color: var(--accent); }
-  .hatch-wordmark { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #facc15; margin-bottom: 1px; }
+  .hatch-wordmark { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #4f7cff; margin-bottom: 1px; }
   .container { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
   .progress-bar { background: var(--surface); border: 1px solid var(--border); border-radius: 30px; height: 8px; margin-bottom: 24px; overflow: hidden; }
   .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 30px; transition: width 0.3s ease; }
@@ -182,22 +183,11 @@ header h1 { font-size: 1.2rem; font-weight: 600; }
 <body>
 
 <header>
-  <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="ciT" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="#32325e"/><stop offset="100%" stop-color="#1c1c38"/>
-      </linearGradient>
-      <linearGradient id="ciB" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="#26263e"/><stop offset="100%" stop-color="#141428"/>
-      </linearGradient>
-      <radialGradient id="ciG" cx="50%" cy="50%" r="60%">
-        <stop offset="0%" stop-color="#ffcc70"/><stop offset="100%" stop-color="#ff8020" stop-opacity="0"/>
-      </radialGradient>
-    </defs>
-    <path d="M8 25C8 39 15 47 24 47C33 47 40 39 40 25Z" fill="url(#ciB)" stroke="#3d3d62" stroke-width="1.5"/>
-    <ellipse cx="24" cy="22" rx="14" ry="5" fill="url(#ciG)"/>
-    <path d="M8 25C8 11 14 3 24 3C34 3 40 11 40 25Z" fill="url(#ciT)" stroke="#3d3d62" stroke-width="1.5" transform="translate(0,-3)"/>
-    <path d="M9 23L14 19L19 24L23 18L27 24L32 19L37 23L40 21" stroke="#facc15" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <svg width="40" height="40" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50,6 L87,27 L87,73 L50,94 L13,73 L13,27 Z" fill="#1c2340" stroke="#3d3d62" stroke-width="1.5"/>
+    <rect x="21" y="46" width="58" height="9" rx="4.5" fill="#4f7cff"/>
+    <circle cx="26" cy="24" r="4.5" fill="#4f7cff"/>
+    <circle cx="74" cy="76" r="4.5" fill="#4f7cff"/>
   </svg>
   <div>
     <div class="hatch-wordmark">Hatch</div>
