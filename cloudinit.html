@@ -526,7 +526,7 @@ header h1 { font-size: 1.2rem; font-weight: 600; }
 
     <div class="card">
       <h2>⚙️ Systemd Units</h2>
-      <p class="subtitle">Create custom systemd unit files (services, timers, sockets, etc). Cloud-init writes the unit file and runs <code>daemon-reload</code> plus enable/start via runcmd automatically.</p>
+      <p class="subtitle">Create custom systemd unit files (services, timers, sockets, etc). Cloud-init writes the unit file and runs <code>daemon-reload</code> plus enable/start via runcmd automatically. Service units can be built with a guided form or pasted as raw text — switching back to Guided regenerates the file from the form fields, discarding manual edits.</p>
       <div class="dynamic-list" id="systemdUnitList"></div>
       <button class="btn btn-secondary" style="margin-top:8px" onclick="addSystemdUnit()">+ Add Systemd Unit</button>
     </div>
@@ -1062,12 +1062,47 @@ function systemdTemplate(type) {
   };
   return templates[type] || templates.service;
 }
+function defaultServiceBuilder() {
+  return { description:'', execStart:'', type:'simple', user:'', workingDir:'', restart:'on-failure', after:'network-online.target', wants:'network-online.target', wantedBy:'multi-user.target' };
+}
+function buildServiceUnitContent(b) {
+  const lines = ['[Unit]', `Description=${b.description || 'My Service'}`];
+  if (b.after) lines.push(`After=${b.after}`);
+  if (b.wants) lines.push(`Wants=${b.wants}`);
+  lines.push('', '[Service]', `Type=${b.type||'simple'}`);
+  if (b.user) lines.push(`User=${b.user}`);
+  if (b.workingDir) lines.push(`WorkingDirectory=${b.workingDir}`);
+  lines.push(`ExecStart=${b.execStart || '/usr/local/bin/myapp'}`);
+  if (b.restart && b.restart !== 'no') lines.push(`Restart=${b.restart}`);
+  lines.push('', '[Install]', `WantedBy=${b.wantedBy||'multi-user.target'}`, '');
+  return lines.join('\n');
+}
 function addSystemdUnit() {
-  systemdUnits.push({ name:'', type:'service', content:'', enable:true, startNow:true });
+  const builder = defaultServiceBuilder();
+  systemdUnits.push({ name:'', type:'service', content: buildServiceUnitContent(builder), enable:true, startNow:true, builderMode:'guided', builder });
   renderSystemdUnits();
 }
 function removeSystemdUnit(i) { systemdUnits.splice(i,1); renderSystemdUnits(); }
 function insertSystemdTemplate(i) { systemdUnits[i].content = systemdTemplate(systemdUnits[i].type); renderSystemdUnits(); }
+function onUnitTypeChange(i, value) {
+  systemdUnits[i].type = value;
+  if (value === 'service' && systemdUnits[i].builderMode === 'guided') {
+    systemdUnits[i].content = buildServiceUnitContent(systemdUnits[i].builder);
+  }
+  renderSystemdUnits();
+}
+function setUnitBuilderMode(i, mode) {
+  systemdUnits[i].builderMode = mode;
+  if (mode === 'guided') systemdUnits[i].content = buildServiceUnitContent(systemdUnits[i].builder);
+  renderSystemdUnits();
+}
+function updateServiceBuilder(i, field, value) {
+  systemdUnits[i].builder[field] = value;
+  const content = buildServiceUnitContent(systemdUnits[i].builder);
+  systemdUnits[i].content = content;
+  const preview = document.getElementById('sup'+i);
+  if (preview) preview.value = content;
+}
 function renderSystemdUnits() {
   const list = document.getElementById('systemdUnitList');
   list.innerHTML = '';
@@ -1075,13 +1110,54 @@ function renderSystemdUnits() {
     const row = document.createElement('div');
     row.className = 'dynamic-row';
     const title = (u.name||'New Unit') + (u.name ? '.'+u.type : '');
+
+    const builderToggle = u.type === 'service' ? `
+        <div class="form-group full" style="margin-top:4px;margin-bottom:-4px">
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn btn-sm ${u.builderMode==='guided'?'btn-primary':'btn-secondary'}" onclick="setUnitBuilderMode(${i},'guided')">🧩 Guided</button>
+            <button type="button" class="btn btn-sm ${u.builderMode==='raw'?'btn-primary':'btn-secondary'}" onclick="setUnitBuilderMode(${i},'raw')">📝 Raw (paste unit file)</button>
+          </div>
+        </div>` : '';
+
+    let contentSection;
+    if (u.type === 'service' && u.builderMode === 'guided') {
+      const b = u.builder;
+      contentSection = `
+        <div class="form-group"><label>Description</label><input type="text" value="${escA(b.description)}" placeholder="My Service" oninput="updateServiceBuilder(${i},'description',this.value)"></div>
+        <div class="form-group"><label>ExecStart <span class="req">*</span></label><input type="text" class="mono" value="${escA(b.execStart)}" placeholder="/usr/local/bin/myapp --flag" oninput="updateServiceBuilder(${i},'execStart',this.value)"></div>
+        <div class="form-group"><label>Service Type</label>
+          <select onchange="updateServiceBuilder(${i},'type',this.value)">
+            ${['simple','forking','oneshot','notify','dbus','idle'].map(t=>`<option value="${t}" ${b.type===t?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label>Run As User</label><input type="text" value="${escA(b.user)}" placeholder="root" oninput="updateServiceBuilder(${i},'user',this.value)"></div>
+        <div class="form-group"><label>Working Directory</label><input type="text" class="mono" value="${escA(b.workingDir)}" placeholder="/opt/myapp" oninput="updateServiceBuilder(${i},'workingDir',this.value)"></div>
+        <div class="form-group"><label>Restart Policy</label>
+          <select onchange="updateServiceBuilder(${i},'restart',this.value)">
+            ${['no','on-failure','always','on-abnormal','on-abort','on-success'].map(r=>`<option value="${r}" ${b.restart===r?'selected':''}>${r}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label>After</label><input type="text" value="${escA(b.after)}" placeholder="network-online.target" oninput="updateServiceBuilder(${i},'after',this.value)"></div>
+        <div class="form-group"><label>Wants</label><input type="text" value="${escA(b.wants)}" placeholder="network-online.target" oninput="updateServiceBuilder(${i},'wants',this.value)"></div>
+        <div class="form-group"><label>WantedBy</label><input type="text" value="${escA(b.wantedBy)}" placeholder="multi-user.target" oninput="updateServiceBuilder(${i},'wantedBy',this.value)"></div>
+        <div class="form-group full"><label>Generated Unit File (preview)</label>
+          <textarea class="mono" rows="8" readonly style="opacity:0.85" id="sup${i}">${esc(u.content)}</textarea>
+        </div>`;
+    } else {
+      contentSection = `
+        <div class="form-group full">
+          <label>Unit File Content <span class="req">*</span> — <a href="#" style="font-weight:400;font-size:0.78rem" onclick="event.preventDefault();insertSystemdTemplate(${i})">insert template</a></label>
+          <textarea class="mono" rows="8" placeholder="[Unit]&#10;Description=...&#10;&#10;[Service]&#10;ExecStart=..." oninput="systemdUnits[${i}].content=this.value">${esc(u.content)}</textarea>
+        </div>`;
+    }
+
     row.innerHTML = `
       <div class="dynamic-row-header"><span class="dynamic-row-title" id="sut${i}">${esc(title)}</span>
         <button class="btn btn-secondary btn-sm" onclick="removeSystemdUnit(${i})">Remove</button></div>
       <div class="form-grid">
         <div class="form-group"><label>Unit Name <span class="req">*</span></label><input type="text" class="mono" value="${escA(u.name)}" placeholder="myapp" oninput="systemdUnits[${i}].name=this.value; var t=document.getElementById('sut${i}'); if(t) t.textContent=(this.value||'New Unit')+(this.value?'.'+systemdUnits[${i}].type:'')"></div>
         <div class="form-group"><label>Unit Type</label>
-          <select onchange="systemdUnits[${i}].type=this.value; var t=document.getElementById('sut${i}'); if(t) t.textContent=(systemdUnits[${i}].name||'New Unit')+(systemdUnits[${i}].name?'.'+this.value:'')">
+          <select onchange="onUnitTypeChange(${i}, this.value)">
             ${['service','timer','socket','mount','path','target'].map(t=>`<option value="${t}" ${u.type===t?'selected':''}>${t}</option>`).join('')}
           </select>
         </div>
@@ -1097,10 +1173,8 @@ function renderSystemdUnits() {
             <option value="false" ${!u.startNow?'selected':''}>false</option>
           </select>
         </div>
-        <div class="form-group full">
-          <label>Unit File Content <span class="req">*</span> — <a href="#" style="font-weight:400;font-size:0.78rem" onclick="event.preventDefault();insertSystemdTemplate(${i})">insert template</a></label>
-          <textarea class="mono" rows="8" placeholder="[Unit]&#10;Description=...&#10;&#10;[Service]&#10;ExecStart=..." oninput="systemdUnits[${i}].content=this.value">${esc(u.content)}</textarea>
-        </div>
+        ${builderToggle}
+        ${contentSection}
       </div>`;
     list.appendChild(row);
   });
