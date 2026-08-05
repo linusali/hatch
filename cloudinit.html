@@ -1001,23 +1001,38 @@ function onMountFstypeChange(i, value) {
   mounts[i].options = opts.join(',');
   renderMounts();
 }
+function mountPlaceholders(fstype) {
+  const map = {
+    ext4:  { label: 'Device / UUID / Label', device: '/dev/sdb1 or UUID=abc-123', mountpoint: '/data' },
+    xfs:   { label: 'Device / UUID / Label', device: '/dev/sdb1 or UUID=abc-123', mountpoint: '/data' },
+    btrfs: { label: 'Device / UUID / Label', device: '/dev/sdb1 or UUID=abc-123', mountpoint: '/data' },
+    vfat:  { label: 'Device / UUID / Label', device: '/dev/sdb1 or UUID=abc-123', mountpoint: '/mnt/usb' },
+    swap:  { label: 'Device / UUID / Label', device: '/dev/sdb2 or UUID=abc-123', mountpoint: 'none' },
+    tmpfs: { label: 'Device', device: 'tmpfs', mountpoint: '/tmp/scratch' },
+    nfs:   { label: 'NFS Export Path', device: 'nfs-server.example.com:/export/data', mountpoint: '/mnt/nfs' },
+    nfs4:  { label: 'NFS Export Path', device: 'nfs-server.example.com:/export/data', mountpoint: '/mnt/nfs' },
+    cifs:  { label: 'SMB Share Path', device: '//smb-server.example.com/share', mountpoint: '/mnt/smb' },
+  };
+  return map[fstype] || map.ext4;
+}
 function renderMounts() {
   const list = document.getElementById('mountList');
   list.innerHTML = '';
   mounts.forEach((m,i) => {
     const row = document.createElement('div');
     row.className = 'dynamic-row';
+    const ph = mountPlaceholders(m.fstype);
     row.innerHTML = `
       <div class="dynamic-row-header"><span class="dynamic-row-title">Mount ${i+1}</span>
         <button class="btn btn-secondary btn-sm" onclick="removeMount(${i})">Remove</button></div>
       <div class="form-grid">
-        <div class="form-group"><label>Device / UUID / Label</label><input type="text" class="mono" value="${escA(m.device)}" placeholder="/dev/sdb1 or UUID=abc-123" oninput="mounts[${i}].device=this.value"></div>
-        <div class="form-group"><label>Mount Point</label><input type="text" class="mono" value="${escA(m.mountpoint)}" placeholder="/data" oninput="mounts[${i}].mountpoint=this.value"></div>
         <div class="form-group"><label>Filesystem Type</label>
           <select onchange="onMountFstypeChange(${i}, this.value)">
             ${['ext4','xfs','btrfs','nfs','nfs4','cifs','tmpfs','vfat','swap'].map(f=>`<option value="${f}" ${m.fstype===f?'selected':''}>${f}</option>`).join('')}
           </select>
         </div>
+        <div class="form-group"><label>${esc(ph.label)}</label><input type="text" class="mono" value="${escA(m.device)}" placeholder="${escA(ph.device)}" oninput="mounts[${i}].device=this.value"></div>
+        <div class="form-group"><label>Mount Point</label><input type="text" class="mono" value="${escA(m.mountpoint)}" placeholder="${escA(ph.mountpoint)}" oninput="mounts[${i}].mountpoint=this.value"></div>
         <div class="form-group"><label>Mount Options</label><input type="text" class="mono" value="${escA(m.options)}" placeholder="defaults,noatime,nofail" oninput="mounts[${i}].options=this.value"></div>
         <div class="form-group"><label>Dump (0/1)</label><input type="number" value="${m.dump}" min="0" max="1" oninput="mounts[${i}].dump=+this.value"></div>
         <div class="form-group"><label>Fsck Pass (0/1/2)</label><input type="number" value="${m.pass}" min="0" max="2" oninput="mounts[${i}].pass=+this.value"></div>
