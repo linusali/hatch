@@ -25,6 +25,8 @@
     --warning: #ff8c00;
     --error: #c50f1f;
     --radius: 8px;
+    --shadow: 0 2px 8px rgba(0,0,0,0.25);
+    --shadow-lg: 0 6px 20px rgba(0,0,0,0.35);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -109,7 +111,7 @@
     color: var(--text-muted);
     transition: all 0.2s;
   }
-  .step-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .step-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 2px 10px rgba(0,120,212,0.4); }
   .step-pill.done { background: #0a3020; border-color: #107c10; color: #4caf50; }
   .card {
     background: var(--surface);
@@ -117,6 +119,7 @@
     border-radius: var(--radius);
     padding: 24px;
     margin-bottom: 16px;
+    box-shadow: var(--shadow);
   }
   .card h2 {
     font-size: 1rem;
@@ -165,7 +168,7 @@
     transition: border-color 0.2s;
     outline: none;
   }
-  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,120,212,0.15); }
   select option { background: #1a1a2e; }
   textarea { resize: vertical; min-height: 80px; }
   .toggle-row {
@@ -218,7 +221,7 @@
     align-items: center;
     transition: border-color 0.2s;
   }
-  .tag-input-container:focus-within { border-color: var(--accent); }
+  .tag-input-container:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,120,212,0.15); }
   .tag {
     background: var(--surface2);
     border: 1px solid var(--accent);
@@ -244,19 +247,21 @@
   .btn {
     padding: 10px 20px;
     border-radius: var(--radius);
-    border: none;
+    border: 1px solid transparent;
     font-size: 0.88rem;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: transform 0.15s, box-shadow 0.15s, background 0.15s, border-color 0.15s;
     display: inline-flex;
     align-items: center;
     gap: 8px;
   }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: var(--accent-hover); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(0,120,212,0.35); }
+  .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,120,212,0.45); }
   .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-  .btn-secondary:hover { border-color: var(--accent); }
+  .btn-secondary:hover { border-color: var(--accent); transform: translateY(-1px); }
   .btn-success { background: var(--success); color: #fff; }
   .btn-success:hover { background: #0e6b0e; }
   .btn-lg { padding: 13px 28px; font-size: 0.95rem; }
@@ -266,6 +271,11 @@
     align-items: center;
     margin-top: 24px;
     gap: 12px;
+    flex-wrap: wrap;
+  }
+  @media (max-width: 600px) {
+    .nav-buttons { flex-direction: column; align-items: stretch; }
+    .nav-buttons .btn { width: 100%; justify-content: center; }
   }
   .section-hidden { display: none; }
   .xml-output {
@@ -331,7 +341,9 @@
     grid-template-columns: auto 1fr 1fr 1fr auto;
     gap: 10px;
     align-items: center;
+    transition: border-color 0.2s;
   }
+  .partition-row:hover { border-color: rgba(0,120,212,0.35); }
   .partition-type-badge {
     font-size: 0.72rem;
     padding: 2px 8px;
@@ -353,7 +365,9 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 8px 12px;
+    transition: border-color 0.2s;
   }
+  .command-row:hover { border-color: rgba(0,120,212,0.35); }
   .command-order { font-size: 0.75rem; color: var(--text-muted); text-align: center; }
   .copy-feedback {
     position: fixed;
@@ -370,6 +384,13 @@
     z-index: 1000;
   }
   .copy-feedback.show { opacity: 1; }
+  .review-section { margin-bottom: 22px; }
+  .review-section:last-child { margin-bottom: 0; }
+  .review-section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); font-weight: 600; margin-bottom: 10px; }
+  .review-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .review-item { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; }
+  .review-item-key { font-size: 0.7rem; color: var(--text-muted); }
+  .review-item-val { font-size: 0.86rem; margin-top: 3px; word-break: break-all; font-weight: 500; }
   @media (max-width: 600px) {
     .form-grid { grid-template-columns: 1fr; }
     .partition-row { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }
@@ -930,7 +951,7 @@
       </div>
     </div>
     <div class="nav-buttons">
-      <button class="btn btn-secondary" onclick="prevStep()">← Back</button>
+      <button class="btn btn-secondary btn-lg" onclick="prevStep()">← Back</button>
       <button class="btn btn-primary btn-lg" onclick="generateXML()">⚡ Generate XML</button>
     </div>
   </div>
@@ -1191,28 +1212,41 @@ function renderReview() {
   const G = id => document.getElementById(id);
   const v = id => G(id) ? G(id).value : '';
   const ch = id => G(id) && G(id).checked;
-  const rows = [
-    ['Windows Version', v('winVersion')], ['Edition', v('winEdition')], ['Architecture', v('winArch')],
-    ['Firmware', v('firmwareType')], ['Product Key', v('productKey')||'(none)'],
-    ['UI Language', v('uiLanguage')], ['Time Zone', v('timeZone')], ['Keyboard', v('keyboardLayout')],
-    ['Disk Number', v('diskNumber')], ['Disk Layout', v('diskLayout')],
-    ['Computer Name', v('computerName')||'*'],
-    ['Network', v('networkType')==='domain' ? 'Domain: '+v('domainName') : 'Workgroup: '+v('workgroupName')],
-    ['Admin Account', v('adminAccountMode')], ['Local Users', localUsers.length ? localUsers.map(u=>u.name).join(', ') : 'None'],
-    ['Auto-Logon', v('autoLogonUser')||'Disabled'], ['Skip OOBE', ch('skipOOBE')?'Yes':'No'],
-    ['Disable Telemetry', ch('disableTelemetry')?'Yes':'No'],
-    ['Specialize Cmds', specializeCommands.filter(Boolean).length],
-    ['FirstLogon Cmds', firstLogonCommands.filter(Boolean).length],
-    ['Enable RDP', ch('enableRDP')?'Yes':'No'],
+  const sections = [
+    { title: 'Windows Edition', rows: [
+      ['Windows Version', v('winVersion')], ['Edition', v('winEdition')], ['Architecture', v('winArch')],
+      ['Firmware', v('firmwareType')], ['Product Key', v('productKey')||'(none)'],
+    ]},
+    { title: 'Locale', rows: [
+      ['UI Language', v('uiLanguage')], ['Time Zone', v('timeZone')], ['Keyboard', v('keyboardLayout')],
+    ]},
+    { title: 'Disk', rows: [
+      ['Disk Number', v('diskNumber')], ['Disk Layout', v('diskLayout')],
+    ]},
+    { title: 'Identity & Network', rows: [
+      ['Computer Name', v('computerName')||'*'],
+      ['Network', v('networkType')==='domain' ? 'Domain: '+v('domainName') : 'Workgroup: '+v('workgroupName')],
+    ]},
+    { title: 'Accounts & Logon', rows: [
+      ['Admin Account', v('adminAccountMode')], ['Local Users', localUsers.length ? localUsers.map(u=>u.name).join(', ') : 'None'],
+      ['Auto-Logon', v('autoLogonUser')||'Disabled'],
+    ]},
+    { title: 'OOBE & Privacy', rows: [
+      ['Skip OOBE', ch('skipOOBE')?'Yes':'No'], ['Disable Telemetry', ch('disableTelemetry')?'Yes':'No'],
+    ]},
+    { title: 'Post-Setup', rows: [
+      ['Specialize Cmds', specializeCommands.filter(Boolean).length],
+      ['FirstLogon Cmds', firstLogonCommands.filter(Boolean).length],
+      ['Enable RDP', ch('enableRDP')?'Yes':'No'],
+    ]},
   ];
-  let html = '<div class="form-grid">';
-  rows.forEach(([k,v]) => {
-    html += `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
-      <div style="font-size:0.75rem;color:var(--text-muted)">${k}</div>
-      <div style="font-size:0.88rem;margin-top:2px">${esc(String(v))}</div></div>`;
-  });
-  html += '</div>';
-  document.getElementById('reviewSummary').innerHTML = html;
+  document.getElementById('reviewSummary').innerHTML = sections.map(({title, rows}) => `
+    <div class="review-section">
+      <div class="review-section-title">${esc(title)}</div>
+      <div class="review-grid">
+        ${rows.map(([k,val]) => `<div class="review-item"><div class="review-item-key">${esc(k)}</div><div class="review-item-val">${esc(String(val))}</div></div>`).join('')}
+      </div>
+    </div>`).join('');
 }
 
 function esc(s) {
