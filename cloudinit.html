@@ -525,6 +525,13 @@ header h1 { font-size: 1.2rem; font-weight: 600; }
     </div>
 
     <div class="card">
+      <h2>⚙️ Systemd Units</h2>
+      <p class="subtitle">Create custom systemd unit files (services, timers, sockets, etc). Cloud-init writes the unit file and runs <code>daemon-reload</code> plus enable/start via runcmd automatically.</p>
+      <div class="dynamic-list" id="systemdUnitList"></div>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="addSystemdUnit()">+ Add Systemd Unit</button>
+    </div>
+
+    <div class="card">
       <h2>🕐 NTP Configuration</h2>
       <p class="subtitle">Configure Network Time Protocol servers.</p>
       <div class="toggle-row">
@@ -663,6 +670,7 @@ let bootCmds = [];
 let runCmds = [];
 let ntpServers = [];
 let ntpPools = [];
+let systemdUnits = [];
 
 // ─── Tag stores ───────────────────────────────────────────────────────────────
 const tagStores = { package: packages, globalDns, globalDnsSearch, ntpServer: ntpServers, ntpPool: ntpPools };
@@ -1041,6 +1049,64 @@ function renderWriteFiles() {
   if (!writeFiles.length) list.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0">No files configured.</p>';
 }
 
+// ─── Systemd units ──────────────────────────────────────────────────────────
+function systemdUnitFilename(u) { return u.name.includes('.') ? u.name : `${u.name}.${u.type}`; }
+function systemdTemplate(type) {
+  const templates = {
+    service: `[Unit]\nDescription=My Service\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=simple\nExecStart=/usr/local/bin/myapp\nRestart=on-failure\n\n[Install]\nWantedBy=multi-user.target\n`,
+    timer: `[Unit]\nDescription=Run myapp.service periodically\n\n[Timer]\nOnCalendar=*-*-* 00:00:00\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n`,
+    socket: `[Unit]\nDescription=My Socket\n\n[Socket]\nListenStream=/run/myapp.sock\n\n[Install]\nWantedBy=sockets.target\n`,
+    mount: `[Unit]\nDescription=My Mount\n\n[Mount]\nWhat=UUID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\nWhere=/mnt/data\nType=ext4\n\n[Install]\nWantedBy=multi-user.target\n`,
+    path: `[Unit]\nDescription=Watch a path\n\n[Path]\nPathExists=/var/run/myapp.trigger\n\n[Install]\nWantedBy=multi-user.target\n`,
+    target: `[Unit]\nDescription=My Target\nWants=multi-user.target\n`,
+  };
+  return templates[type] || templates.service;
+}
+function addSystemdUnit() {
+  systemdUnits.push({ name:'', type:'service', content:'', enable:true, startNow:true });
+  renderSystemdUnits();
+}
+function removeSystemdUnit(i) { systemdUnits.splice(i,1); renderSystemdUnits(); }
+function insertSystemdTemplate(i) { systemdUnits[i].content = systemdTemplate(systemdUnits[i].type); renderSystemdUnits(); }
+function renderSystemdUnits() {
+  const list = document.getElementById('systemdUnitList');
+  list.innerHTML = '';
+  systemdUnits.forEach((u,i) => {
+    const row = document.createElement('div');
+    row.className = 'dynamic-row';
+    const title = (u.name||'New Unit') + (u.name ? '.'+u.type : '');
+    row.innerHTML = `
+      <div class="dynamic-row-header"><span class="dynamic-row-title" id="sut${i}">${esc(title)}</span>
+        <button class="btn btn-secondary btn-sm" onclick="removeSystemdUnit(${i})">Remove</button></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Unit Name <span class="req">*</span></label><input type="text" class="mono" value="${escA(u.name)}" placeholder="myapp" oninput="systemdUnits[${i}].name=this.value; var t=document.getElementById('sut${i}'); if(t) t.textContent=(this.value||'New Unit')+(this.value?'.'+systemdUnits[${i}].type:'')"></div>
+        <div class="form-group"><label>Unit Type</label>
+          <select onchange="systemdUnits[${i}].type=this.value; var t=document.getElementById('sut${i}'); if(t) t.textContent=(systemdUnits[${i}].name||'New Unit')+(systemdUnits[${i}].name?'.'+this.value:'')">
+            ${['service','timer','socket','mount','path','target'].map(t=>`<option value="${t}" ${u.type===t?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label>Enable at boot</label>
+          <select onchange="systemdUnits[${i}].enable=this.value==='true'">
+            <option value="true" ${u.enable?'selected':''}>true — systemctl enable</option>
+            <option value="false" ${!u.enable?'selected':''}>false</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Start immediately</label>
+          <select onchange="systemdUnits[${i}].startNow=this.value==='true'">
+            <option value="true" ${u.startNow?'selected':''}>true — systemctl start</option>
+            <option value="false" ${!u.startNow?'selected':''}>false</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Unit File Content <span class="req">*</span> — <a href="#" style="font-weight:400;font-size:0.78rem" onclick="event.preventDefault();insertSystemdTemplate(${i})">insert template</a></label>
+          <textarea class="mono" rows="8" placeholder="[Unit]&#10;Description=...&#10;&#10;[Service]&#10;ExecStart=..." oninput="systemdUnits[${i}].content=this.value">${esc(u.content)}</textarea>
+        </div>
+      </div>`;
+    list.appendChild(row);
+  });
+  if (!systemdUnits.length) list.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0">No systemd units configured.</p>';
+}
+
 // ─── Boot / run commands ──────────────────────────────────────────────────────
 function addBootCmd() { bootCmds.push(''); renderCmdList('bootcmdList', bootCmds, 'bootCmds', 'Boot command'); }
 function addRunCmd() { runCmds.push(''); renderCmdList('runcmdList', runCmds, 'runCmds', 'Command'); }
@@ -1086,7 +1152,8 @@ function renderReview() {
     ['APT Sources', aptSources.length], ['YUM Repos', yumRepos.length],
     ['Mounts', mounts.length], ['Swap File', v('swapFile')||'none'],
     ['Write Files', writeFiles.length], ['bootcmds', bootCmds.filter(Boolean).length],
-    ['runcmds', runCmds.filter(Boolean).length], ['NTP', ch('ntpEnabled')?'enabled':'disabled'],
+    ['runcmds', runCmds.filter(Boolean).length], ['Systemd Units', systemdUnits.filter(u=>u.name&&u.content).length],
+    ['NTP', ch('ntpEnabled')?'enabled':'disabled'],
     ['Power State', v('powerState')||'none'],
   ];
   const c = document.getElementById('reviewSummary');
@@ -1267,8 +1334,13 @@ function generateUserData() {
     if (swapMax) lines.push(`  maxsize: ${swapMax}`);
   }
 
-  // Write files
-  const validFiles = writeFiles.filter(f=>f.path);
+  // Write files (including systemd unit files)
+  const validUnits = systemdUnits.filter(u=>u.name && u.content);
+  const unitFileEntries = validUnits.map(u => ({
+    path: `/etc/systemd/system/${systemdUnitFilename(u)}`,
+    content: u.content, owner: 'root:root', permissions: '0644', append: false, encoding: 'text',
+  }));
+  const validFiles = writeFiles.filter(f=>f.path).concat(unitFileEntries);
   if (validFiles.length) {
     lines.push(`\nwrite_files:`);
     validFiles.forEach(f => {
@@ -1313,7 +1385,17 @@ function generateUserData() {
   }
 
   // runcmd
-  const validRunCmds = runCmds.filter(Boolean);
+  const unitCmds = [];
+  if (validUnits.length) {
+    unitCmds.push('systemctl daemon-reload');
+    validUnits.forEach(u => {
+      const unitName = systemdUnitFilename(u);
+      if (u.enable && u.startNow) unitCmds.push(`systemctl enable --now ${unitName}`);
+      else if (u.enable) unitCmds.push(`systemctl enable ${unitName}`);
+      else if (u.startNow) unitCmds.push(`systemctl start ${unitName}`);
+    });
+  }
+  const validRunCmds = runCmds.filter(Boolean).concat(unitCmds);
   if (validRunCmds.length) {
     lines.push(`\nruncmd:`);
     validRunCmds.forEach(cmd => lines.push(`  - ${yamlStr(cmd)}`));
@@ -1467,6 +1549,7 @@ renderUsers();
 renderInterfaces();
 renderMounts();
 renderWriteFiles();
+renderSystemdUnits();
 renderCmdList('bootcmdList', bootCmds, 'bootCmds', 'Boot command');
 renderCmdList('runcmdList', runCmds, 'runCmds', 'Command');
 renderAptSources();
