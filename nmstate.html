@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50,6 L87,27 L87,73 L50,94 L13,73 L13,27 Z' fill='%231c2340'/%3E%3Crect x='21' y='46' width='58' height='9' rx='4.5' fill='%234f7cff'/%3E%3Ccircle cx='26' cy='24' r='4.5' fill='%234f7cff'/%3E%3Ccircle cx='74' cy='76' r='4.5' fill='%234f7cff'/%3E%3C/svg%3E">
+<title>Hatch — Nmstate Network Config Generator (NodeNetworkConfigurationPolicy)</title>
+<meta name="description" content="Generate declarative nmstate network state YAML and OpenShift NodeNetworkConfigurationPolicy CRs. Configure interfaces, VLANs, bonds, SR-IOV virtual functions, Linux/OVS bridges, routes, route rules, and DNS. Free, runs entirely in your browser.">
+<meta name="keywords" content="nmstate generator, NodeNetworkConfigurationPolicy, NNCP, kubernetes-nmstate, network state yaml, bond configuration, vlan configuration, sr-iov, linux bridge, ovs bridge, openshift networking">
+<link rel="canonical" href="https://bootsha.net/hatch/nmstate.html">
+<meta property="og:title" content="Hatch — Nmstate Network Config Generator">
+<meta property="og:description" content="Generate nmstate state YAML and OpenShift NodeNetworkConfigurationPolicy CRs — interfaces, VLANs, bonds, SR-IOV, bridges, routes, and DNS. Free, runs entirely in your browser.">
+<meta property="og:url" content="https://bootsha.net/hatch/nmstate.html">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --bg: #0d1015;
+    --surface: #151920;
+    --surface2: #12151c;
+    --accent: #4f7cff;
+    --accent-hover: #3d68f0;
+    --text: #e6e9ef;
+    --text-muted: #8b93a3;
+    --border: #262c38;
+    --success: #22c55e;
+    --error: #ef4444;
+    --radius: 10px;
+    --shadow: 0 2px 8px rgba(0,0,0,0.25);
+    --shadow-lg: 0 6px 20px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+  header {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header h1 { font-size: 1.2rem; font-weight: 600; }
+  header p { font-size: 0.8rem; color: var(--text-muted); }
+  .privacy-badge {
+    margin-left: auto;
+    background: #0a3020;
+    border: 1px solid #107c10;
+    color: #4caf50;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+  .home-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.8rem;
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    white-space: nowrap;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .home-link:hover { color: var(--text); border-color: var(--accent); }
+  .hatch-wordmark { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #4f7cff; margin-bottom: 1px; }
+  .container { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+  .progress-bar { background: var(--surface); border: 1px solid var(--border); border-radius: 30px; height: 8px; margin-bottom: 24px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 30px; transition: width 0.3s ease; }
+  .step-indicator { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+  .step-pill {
+    padding: 4px 10px; border-radius: 20px; font-size: 0.72rem; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); transition: all 0.2s;
+  }
+  .step-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 2px 10px rgba(79,124,255,0.4); }
+  .step-pill.done { background: #0a3020; border-color: #107c10; color: #4caf50; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .card .subtitle { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 20px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 0.82rem; font-weight: 500; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+  label .hint { font-weight: 400; font-size: 0.75rem; color: var(--text-muted); margin-left: auto; }
+  label .req { color: var(--error); }
+  input[type="text"], input[type="password"], input[type="number"], select, textarea {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text); padding: 9px 12px; font-size: 0.88rem; font-family: inherit; width: 100%;
+    transition: border-color 0.2s; outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,124,255,0.15); }
+  select option { background: #1a1a2e; }
+  textarea { resize: vertical; min-height: 80px; }
+  .mono { font-family: 'Cascadia Code','Consolas','Courier New',monospace; font-size: 0.82rem; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-label { font-size: 0.88rem; }
+  .toggle-desc { font-size: 0.76rem; color: var(--text-muted); margin-top: 2px; }
+  .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; margin-left: 12px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; top:0;left:0;right:0;bottom:0; background: var(--border); border-radius: 24px; transition: 0.2s; }
+  .slider:before { content:''; position:absolute; height:18px;width:18px;left:3px;bottom:3px; background:#fff; border-radius:50%; transition:0.2s; }
+  input:checked + .slider { background: var(--accent); }
+  input:checked + .slider:before { transform: translateX(20px); }
+  .tag-input-container {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 6px 8px; display: flex; flex-wrap: wrap; gap: 6px; cursor: text;
+    min-height: 42px; align-items: center; transition: border-color 0.2s;
+  }
+  .tag-input-container:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,124,255,0.15); }
+  .ci-tag { background: var(--surface2); border: 1px solid var(--accent); border-radius: 4px; padding: 2px 8px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; }
+  .tag-remove { cursor: pointer; color: var(--text-muted); font-size: 1rem; line-height: 1; }
+  .tag-remove:hover { color: var(--error); }
+  .tag-input { border: none; background: transparent; color: var(--text); font-size: 0.88rem; outline: none; flex: 1; min-width: 100px; padding: 2px 4px; }
+  .btn { padding: 10px 20px; border-radius: var(--radius); border: 1px solid transparent; font-size: 0.88rem; font-weight: 500; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s, background 0.15s, border-color 0.15s; display: inline-flex; align-items: center; gap: 8px; }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(79,124,255,0.35); }
+  .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(79,124,255,0.45); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .btn-lg { padding: 13px 28px; font-size: 0.95rem; }
+  .btn-sm { padding: 5px 12px; font-size: 0.78rem; }
+  .nav-buttons { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; gap: 12px; flex-wrap: wrap; }
+  .nav-buttons-group { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  @media (max-width: 600px) {
+    .nav-buttons { flex-direction: column; align-items: stretch; }
+    .nav-buttons-group { flex-direction: column; align-items: stretch; }
+    .nav-buttons .btn, .nav-buttons-group .btn { width: 100%; justify-content: center; }
+  }
+  .section-hidden { display: none; }
+  .section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .info-box { background: rgba(79,124,255,0.07); border: 1px solid rgba(79,124,255,0.3); border-radius: var(--radius); padding: 12px 16px; font-size: 0.82rem; color: #9db4ff; margin-bottom: 16px; }
+  .warn-box { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius); padding: 12px 16px; font-size: 0.82rem; color: #f5989a; margin-bottom: 16px; }
+  .dynamic-list { display: flex; flex-direction: column; gap: 10px; }
+  .dynamic-row {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px; position: relative; transition: border-color 0.2s;
+  }
+  .dynamic-row:hover { border-color: rgba(79,124,255,0.35); }
+  .dynamic-row-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 10px; flex-wrap: wrap; }
+  .dynamic-row-title { font-size: 0.82rem; font-weight: 600; color: var(--text-muted); }
+  .type-badge { font-size: 0.68rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; background: rgba(79,124,255,0.15); color: var(--accent); border: 1px solid rgba(79,124,255,0.3); text-transform: uppercase; letter-spacing: 0.04em; }
+  .subrow { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+  .subrow + .subrow { margin-top: 8px; }
+  .subsection { margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border); }
+  .subsection-title { font-size: 0.76rem; font-weight: 600; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+  .yaml-output {
+    background: #0d1117; border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px; font-family: 'Cascadia Code','Consolas','Courier New',monospace; font-size: 0.8rem;
+    line-height: 1.6; white-space: pre; overflow-x: auto; max-height: 600px; overflow-y: auto;
+    color: #e6edf3; tab-size: 2;
+  }
+  .output-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+  .copy-feedback { position: fixed; bottom: 24px; right: 24px; background: #107c10; color: #fff; padding: 10px 20px; border-radius: var(--radius); font-size: 0.88rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 1000; }
+  .copy-feedback.show { opacity: 1; }
+  .review-section { margin-bottom: 22px; }
+  .review-section:last-child { margin-bottom: 0; }
+  .review-section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); font-weight: 600; margin-bottom: 10px; }
+  .review-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .review-item { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; }
+  .review-item-key { font-size: 0.7rem; color: var(--text-muted); }
+  .review-item-val { font-size: 0.86rem; margin-top: 3px; word-break: break-all; font-weight: 500; }
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="40" height="40" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50,6 L87,27 L87,73 L50,94 L13,73 L13,27 Z" fill="#1c2340" stroke="#3d3d62" stroke-width="1.5"/>
+    <rect x="21" y="46" width="58" height="9" rx="4.5" fill="#4f7cff"/>
+    <circle cx="26" cy="24" r="4.5" fill="#4f7cff"/>
+    <circle cx="74" cy="76" r="4.5" fill="#4f7cff"/>
+  </svg>
+  <div>
+    <div class="hatch-wordmark">Hatch</div>
+    <h1>Nmstate Network Config Generator</h1>
+    <p>Generate declarative network state YAML and OpenShift NodeNetworkConfigurationPolicy CRs</p>
+  </div>
+  <a href="index.html" class="home-link">← Home</a>
+  <div class="privacy-badge">🔒 100% Local — No Data Transmitted</div>
+</header>
+
+<div class="container">
+  <div class="progress-bar"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="step-indicator" id="stepIndicator"></div>
+
+  <!-- ═══ STEP 1: Interfaces ═══ -->
+  <div class="step-section" id="step-0">
+    <div class="card">
+      <h2>Network Interfaces</h2>
+      <p class="subtitle">Define physical NICs, VLANs, bonds, and bridges. Bonds, VLANs, and bridges reference other interfaces by name — define the underlying interface first.</p>
+      <div class="dynamic-list" id="ifaceList"></div>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="addInterface()">+ Add Interface</button>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 2: Routing & DNS ═══ -->
+  <div class="step-section section-hidden" id="step-1">
+    <div class="card">
+      <h2>Static Routes</h2>
+      <p class="subtitle">Routes added to the routing table on activation.</p>
+      <div class="dynamic-list" id="routeList"></div>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="addRoute()">+ Add Route</button>
+    </div>
+
+    <div class="card">
+      <h2>Route Rules</h2>
+      <p class="subtitle">Policy routing rules — route lookups based on source/destination rather than just destination.</p>
+      <div class="dynamic-list" id="routeRuleList"></div>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="addRouteRule()">+ Add Route Rule</button>
+    </div>
+
+    <div class="card">
+      <h2>DNS Resolver</h2>
+      <p class="subtitle">Global DNS configuration applied to the node.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Search Domains</label>
+          <div class="tag-input-container" onclick="this.querySelector('input').focus()">
+            <div id="dnsSearchTags"></div>
+            <input class="tag-input" id="dnsSearchInput" placeholder="example.com" onkeydown="addTagFromInput(event,'dnsSearch')">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>DNS Servers</label>
+          <div class="tag-input-container" onclick="this.querySelector('input').focus()">
+            <div id="dnsServerTags"></div>
+            <input class="tag-input" id="dnsServerInput" placeholder="10.0.0.2" onkeydown="addTagFromInput(event,'dnsServer')">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 3: Review & Generate ═══ -->
+  <div class="step-section section-hidden" id="step-2">
+    <div class="card">
+      <h2>Review &amp; Generate</h2>
+      <p class="subtitle">Review your configuration, then generate the network state.</p>
+      <div id="reviewSummary"></div>
+    </div>
+
+    <div class="card">
+      <h2>OpenShift / kubernetes-nmstate</h2>
+      <p class="subtitle">Only used when generating the NodeNetworkConfigurationPolicy CR below.</p>
+      <div class="form-grid">
+        <div class="form-group"><label>Policy Name</label><input type="text" id="nncpName" class="mono" placeholder="worker-bond-vlan-policy"></div>
+        <div class="form-group"><label>Node Selector Key</label><input type="text" id="nodeSelectorKey" class="mono" value="kubernetes.io/hostname"></div>
+        <div class="form-group"><label>Node Selector Value</label><input type="text" id="nodeSelectorValue" class="mono" placeholder="worker-0"></div>
+      </div>
+    </div>
+
+    <div id="outputArea" style="display:none">
+      <div class="card">
+        <h2>nmstate State YAML</h2>
+        <p class="subtitle">Apply with <code class="mono">nmstatectl apply</code>, or use as the <code class="mono">desiredState</code> in any NNCP.</p>
+        <div class="warn-box">⚠️ nmstate syntax can vary slightly by version. Validate with <code>nmstatectl schema</code> before applying to production nodes.</div>
+        <pre class="yaml-output" id="stateOutput"></pre>
+        <div class="output-actions">
+          <button class="btn btn-primary btn-lg" onclick="downloadFile('stateOutput','network-state.yaml')">⬇ Download</button>
+          <button class="btn btn-secondary" onclick="copyOutput('stateOutput')">📋 Copy</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>NodeNetworkConfigurationPolicy</h2>
+        <p class="subtitle">Apply with <code class="mono">oc apply -f</code> on a cluster running the kubernetes-nmstate operator.</p>
+        <pre class="yaml-output" id="nncpOutput"></pre>
+        <div class="output-actions">
+          <button class="btn btn-primary btn-lg" onclick="downloadFile('nncpOutput','node-network-policy.yaml')">⬇ Download</button>
+          <button class="btn btn-secondary" onclick="copyOutput('nncpOutput')">📋 Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn btn-secondary btn-lg" onclick="prevStep()">← Back</button>
+      <button class="btn btn-primary btn-lg" onclick="generateAll()">⚡ Generate Config</button>
+    </div>
+  </div>
+
+  <!-- Nav buttons -->
+  <div id="navButtons" class="nav-buttons">
+    <button class="btn btn-secondary" onclick="prevStep()" id="prevBtn" style="visibility:hidden">← Back</button>
+    <button class="btn btn-primary" onclick="nextStep()" id="nextBtn">Next →</button>
+  </div>
+</div>
+
+<div class="copy-feedback" id="copyFeedback">Copied!</div>
+
+<script>
+// ─── Step definitions ─────────────────────────────────────────────────────────
+const STEPS = ['Interfaces', 'Routing & DNS', 'Review & Generate'];
+let currentStep = 0;
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let interfaces = [];
+let routes = [];
+let routeRules = [];
+let dnsSearch = [];
+let dnsServer = [];
+
+const tagStores = { dnsSearch, dnsServer };
+
+const BOND_MODES = ['balance-rr','active-backup','balance-xor','broadcast','802.3ad','balance-tlb','balance-alb'];
+const IFACE_TYPES = ['ethernet','bond','vlan','linux-bridge','ovs-bridge'];
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function init() {
+  addInterface();
+  renderStepIndicator();
+  renderStep();
+}
+
+function renderStep() {
+  document.querySelectorAll('.step-section').forEach((el,i) => el.classList.toggle('section-hidden', i !== currentStep));
+  const isLast = currentStep === STEPS.length - 1;
+  document.getElementById('navButtons').style.display = isLast ? 'none' : 'flex';
+  document.getElementById('prevBtn').style.visibility = currentStep === 0 ? 'hidden' : 'visible';
+  document.getElementById('progressFill').style.width = Math.round((currentStep/(STEPS.length-1))*100) + '%';
+  renderStepIndicator();
+  if (isLast) renderReview();
+}
+
+function renderStepIndicator() {
+  const c = document.getElementById('stepIndicator');
+  c.innerHTML = '';
+  STEPS.forEach((name,i) => {
+    const p = document.createElement('button');
+    p.className = 'step-pill' + (i===currentStep?' active':i<currentStep?' done':'');
+    p.textContent = (i<currentStep?'✓ ':'')+name;
+    p.onclick = () => {
+      if (i<=currentStep) {
+        if (currentStep===STEPS.length-1 && i<currentStep) document.getElementById('outputArea').style.display='none';
+        currentStep=i; renderStep(); window.scrollTo(0,0);
+      }
+    };
+    c.appendChild(p);
+  });
+}
+
+function nextStep() { if(currentStep<STEPS.length-1){currentStep++;renderStep();window.scrollTo(0,0);} }
+function prevStep() {
+  if (currentStep === STEPS.length - 1) document.getElementById('outputArea').style.display = 'none';
+  if(currentStep>0){currentStep--;renderStep();window.scrollTo(0,0);}
+}
+
+// ─── Tag input generic ────────────────────────────────────────────────────────
+function addTagFromInput(e, storeName) {
+  if (e.key !== 'Enter' && e.key !== ',') return;
+  e.preventDefault();
+  const val = e.target.value.trim().replace(/,$/, '');
+  if (!val) return;
+  const store = tagStores[storeName];
+  if (!store.includes(val)) { store.push(val); renderTags(storeName); }
+  e.target.value = '';
+}
+function renderTags(storeName) {
+  const store = tagStores[storeName];
+  const idMap = { dnsSearch: 'dnsSearchTags', dnsServer: 'dnsServerTags' };
+  const container = document.getElementById(idMap[storeName]);
+  if (!container) return;
+  container.innerHTML = '';
+  store.forEach((v,i) => {
+    const t = document.createElement('span');
+    t.className = 'ci-tag';
+    t.innerHTML = `${esc(v)} <span class="tag-remove" onclick="removeTag('${storeName}',${i})">×</span>`;
+    container.appendChild(t);
+  });
+}
+function removeTag(storeName, i) { tagStores[storeName].splice(i,1); renderTags(storeName); }
+
+// ─── Interfaces ───────────────────────────────────────────────────────────────
+function defaultInterface() {
+  return {
+    name: '', type: 'ethernet', state: 'up', mtu: '',
+    ipv4: { method: 'dhcp', addresses: [] },
+    ipv6: { method: 'disabled', addresses: [] },
+    ethernet: { autoneg: false, speed: '', duplex: '', sriovEnabled: false, totalVfs: '', vfs: [] },
+    bond: { mode: 'active-backup', port: [], miimon: '100', xmitHashPolicy: '', lacpRate: '', extraOptions: '' },
+    vlan: { baseIface: '', id: '' },
+    bridge: { port: [], stp: true },
+  };
+}
+function addInterface() { interfaces.push(defaultInterface()); renderInterfaces(); }
+function removeInterface(i) { interfaces.splice(i,1); renderInterfaces(); }
+function onIfaceTypeChange(i, value) { interfaces[i].type = value; renderInterfaces(); }
+function onIfaceIpMethodChange(i, family, value) { interfaces[i][family].method = value; renderInterfaces(); }
+
+function addVf(i) { interfaces[i].ethernet.vfs.push({ vlanId:'', mac:'', spoofCheck:'', trust:'', minTxRate:'', maxTxRate:'' }); renderInterfaces(); }
+function removeVf(i,j) { interfaces[i].ethernet.vfs.splice(j,1); renderInterfaces(); }
+function toggleSriov(i, checked) { interfaces[i].ethernet.sriovEnabled = checked; renderInterfaces(); }
+
+function ifacePortTagInput(iface, i, family, inputId) {
+  const list = family === 'bond' ? iface.bond.port : iface.bridge.port;
+  return `
+    <div class="form-group full"><label>Ports${family==='bond'?' (bond members)':''} <span class="req">*</span></label>
+      <div class="tag-input-container" onclick="this.querySelector('input').focus()">
+        <div id="${inputId}Tags"></div>
+        <input class="tag-input" id="${inputId}Input" placeholder="eth0" onkeydown="addPortTag(event,${i},'${family}')">
+      </div>
+    </div>`;
+}
+function addPortTag(e, i, family) {
+  if (e.key !== 'Enter' && e.key !== ',') return;
+  e.preventDefault();
+  const val = e.target.value.trim().replace(/,$/, '');
+  if (!val) return;
+  const list = family === 'bond' ? interfaces[i].bond.port : interfaces[i].bridge.port;
+  if (!list.includes(val)) list.push(val);
+  e.target.value = '';
+  renderInterfaces();
+}
+function removePortTag(i, family, idx) {
+  const list = family === 'bond' ? interfaces[i].bond.port : interfaces[i].bridge.port;
+  list.splice(idx,1);
+  renderInterfaces();
+}
+
+function ipConfigFields(iface, i, family, isV6) {
+  const cfg = iface[family];
+  const methods = isV6 ? ['disabled','dhcp','autoconf','static'] : ['disabled','dhcp','static'];
+  let html = `
+    <div class="form-group"><label>${isV6?'IPv6':'IPv4'} Method</label>
+      <select onchange="onIfaceIpMethodChange(${i},'${family}',this.value)">
+        ${methods.map(m=>`<option value="${m}" ${cfg.method===m?'selected':''}>${m}</option>`).join('')}
+      </select>
+    </div>`;
+  if (cfg.method === 'static') {
+    html += `
+    <div class="form-group"><label>${isV6?'IPv6':'IPv4'} Addresses <span class="req">*</span></label>
+      <div class="tag-input-container" onclick="this.querySelector('input').focus()">
+        <div id="ip${family}Tags${i}"></div>
+        <input class="tag-input" placeholder="${isV6?'2001:db8::10/64':'192.168.1.10/24'}" onkeydown="addIpAddrTag(event,${i},'${family}')">
+      </div>
+    </div>`;
+  }
+  return html;
+}
+function addIpAddrTag(e, i, family) {
+  if (e.key !== 'Enter' && e.key !== ',') return;
+  e.preventDefault();
+  const val = e.target.value.trim().replace(/,$/, '');
+  if (!val) return;
+  interfaces[i][family].addresses.push(val);
+  e.target.value = '';
+  renderInterfaces();
+}
+function removeIpAddrTag(i, family, idx) { interfaces[i][family].addresses.splice(idx,1); renderInterfaces(); }
+
+function typeSpecificFields(iface, i) {
+  if (iface.type === 'ethernet') {
+    const eth = iface.ethernet;
+    let html = `
+      <div class="form-group"><label>Auto-Negotiation</label>
+        <select onchange="interfaces[${i}].ethernet.autoneg=this.value==='true'">
+          <option value="false" ${!eth.autoneg?'selected':''}>false</option>
+          <option value="true" ${eth.autoneg?'selected':''}>true</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Speed (Mbps)</label><input type="number" value="${eth.speed}" placeholder="10000" oninput="interfaces[${i}].ethernet.speed=this.value"></div>
+      <div class="form-group"><label>Duplex</label>
+        <select onchange="interfaces[${i}].ethernet.duplex=this.value">
+          <option value="" ${!eth.duplex?'selected':''}>(unset)</option>
+          <option value="full" ${eth.duplex==='full'?'selected':''}>full</option>
+          <option value="half" ${eth.duplex==='half'?'selected':''}>half</option>
+        </select>
+      </div>`;
+    html = `<div class="form-grid">${html}</div>`;
+    html += `
+      <div class="subsection">
+        <div class="subsection-title">
+          <span>SR-IOV Virtual Functions</span>
+          <label class="toggle"><input type="checkbox" ${eth.sriovEnabled?'checked':''} onchange="toggleSriov(${i},this.checked)"><span class="slider"></span></label>
+        </div>`;
+    if (eth.sriovEnabled) {
+      html += `
+        <div class="form-grid" style="margin-bottom:12px">
+          <div class="form-group"><label>Total VFs</label><input type="number" min="0" value="${eth.totalVfs}" placeholder="${eth.vfs.length||2}" oninput="interfaces[${i}].ethernet.totalVfs=this.value"></div>
+        </div>
+        <div class="dynamic-list">`;
+      eth.vfs.forEach((vf,j) => {
+        html += `
+          <div class="subrow">
+            <div class="dynamic-row-header"><span class="dynamic-row-title">VF ${j}</span>
+              <button class="btn btn-secondary btn-sm" onclick="removeVf(${i},${j})">Remove</button></div>
+            <div class="form-grid">
+              <div class="form-group"><label>MAC Address</label><input type="text" class="mono" value="${escA(vf.mac)}" placeholder="52:54:00:aa:bb:0${j}" oninput="interfaces[${i}].ethernet.vfs[${j}].mac=this.value"></div>
+              <div class="form-group"><label>VLAN ID</label><input type="number" value="${vf.vlanId}" placeholder="100" oninput="interfaces[${i}].ethernet.vfs[${j}].vlanId=this.value"></div>
+              <div class="form-group"><label>Spoof Check</label>
+                <select onchange="interfaces[${i}].ethernet.vfs[${j}].spoofCheck=this.value">
+                  <option value="" ${!vf.spoofCheck?'selected':''}>(unset)</option>
+                  <option value="true" ${vf.spoofCheck==='true'?'selected':''}>true</option>
+                  <option value="false" ${vf.spoofCheck==='false'?'selected':''}>false</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Trust</label>
+                <select onchange="interfaces[${i}].ethernet.vfs[${j}].trust=this.value">
+                  <option value="" ${!vf.trust?'selected':''}>(unset)</option>
+                  <option value="true" ${vf.trust==='true'?'selected':''}>true</option>
+                  <option value="false" ${vf.trust==='false'?'selected':''}>false</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Min TX Rate (Mbps)</label><input type="number" value="${vf.minTxRate}" oninput="interfaces[${i}].ethernet.vfs[${j}].minTxRate=this.value"></div>
+              <div class="form-group"><label>Max TX Rate (Mbps)</label><input type="number" value="${vf.maxTxRate}" oninput="interfaces[${i}].ethernet.vfs[${j}].maxTxRate=this.value"></div>
+            </div>
+          </div>`;
+      });
+      html += `</div><button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="addVf(${i})">+ Add VF</button>`;
+    }
+    html += `</div>`;
+    return html;
+  }
+
+  if (iface.type === 'bond') {
+    const b = iface.bond;
+    let html = `<div class="subsection"><div class="subsection-title"><span>Bond (Link Aggregation)</span></div>`;
+    html += `<div class="form-grid">
+      <div class="form-group"><label>Mode</label>
+        <select onchange="interfaces[${i}].bond.mode=this.value">
+          ${BOND_MODES.map(m=>`<option value="${m}" ${b.mode===m?'selected':''}>${m}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>MII Monitor (ms)</label><input type="number" value="${b.miimon}" oninput="interfaces[${i}].bond.miimon=this.value"></div>
+      <div class="form-group"><label>Xmit Hash Policy</label>
+        <select onchange="interfaces[${i}].bond.xmitHashPolicy=this.value">
+          <option value="" ${!b.xmitHashPolicy?'selected':''}>(unset)</option>
+          ${['layer2','layer2+3','layer3+4','encap2+3','encap3+4'].map(o=>`<option value="${o}" ${b.xmitHashPolicy===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>LACP Rate <span class="hint">802.3ad only</span></label>
+        <select onchange="interfaces[${i}].bond.lacpRate=this.value">
+          <option value="" ${!b.lacpRate?'selected':''}>(unset)</option>
+          <option value="slow" ${b.lacpRate==='slow'?'selected':''}>slow</option>
+          <option value="fast" ${b.lacpRate==='fast'?'selected':''}>fast</option>
+        </select>
+      </div>
+      ${ifacePortTagInput(iface, i, 'bond', 'bondPort'+i)}
+      <div class="form-group full"><label>Extra Options <span class="hint">one key: value per line</span></label>
+        <textarea class="mono" rows="3" placeholder="ad_actor_sys_prio: 65535" oninput="interfaces[${i}].bond.extraOptions=this.value">${esc(b.extraOptions)}</textarea>
+      </div>
+    </div></div>`;
+    return html;
+  }
+
+  if (iface.type === 'vlan') {
+    const v = iface.vlan;
+    return `<div class="subsection"><div class="subsection-title"><span>VLAN</span></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Base Interface <span class="req">*</span></label><input type="text" class="mono" value="${escA(v.baseIface)}" placeholder="bond0" oninput="interfaces[${i}].vlan.baseIface=this.value"></div>
+        <div class="form-group"><label>VLAN ID <span class="req">*</span></label><input type="number" min="1" max="4094" value="${v.id}" placeholder="100" oninput="interfaces[${i}].vlan.id=this.value"></div>
+      </div></div>`;
+  }
+
+  if (iface.type === 'linux-bridge' || iface.type === 'ovs-bridge') {
+    const br = iface.bridge;
+    let html = `<div class="subsection"><div class="subsection-title"><span>${iface.type === 'linux-bridge' ? 'Linux Bridge' : 'OVS Bridge'}</span></div><div class="form-grid">`;
+    html += ifacePortTagInput(iface, i, 'bridge', 'bridgePort'+i);
+    if (iface.type === 'linux-bridge') {
+      html += `
+        <div class="form-group"><label>STP Enabled</label>
+          <select onchange="interfaces[${i}].bridge.stp=this.value==='true'">
+            <option value="true" ${br.stp?'selected':''}>true</option>
+            <option value="false" ${!br.stp?'selected':''}>false</option>
+          </select>
+        </div>`;
+    }
+    html += `</div></div>`;
+    return html;
+  }
+  return '';
+}
+
+function renderInterfaces() {
+  const list = document.getElementById('ifaceList');
+  list.innerHTML = '';
+  interfaces.forEach((iface,i) => {
+    const row = document.createElement('div');
+    row.className = 'dynamic-row';
+    const title = iface.name || 'New Interface';
+    row.innerHTML = `
+      <div class="dynamic-row-header">
+        <span class="dynamic-row-title" id="ift${i}">${esc(title)}</span>
+        <span class="type-badge">${esc(iface.type)}</span>
+        <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="removeInterface(${i})">Remove</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label>Name <span class="req">*</span></label><input type="text" class="mono" value="${escA(iface.name)}" placeholder="eth0" oninput="interfaces[${i}].name=this.value; var t=document.getElementById('ift${i}'); if(t) t.textContent=this.value||'New Interface'"></div>
+        <div class="form-group"><label>Type</label>
+          <select onchange="onIfaceTypeChange(${i}, this.value)">
+            ${IFACE_TYPES.map(t=>`<option value="${t}" ${iface.type===t?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label>State</label>
+          <select onchange="interfaces[${i}].state=this.value">
+            <option value="up" ${iface.state==='up'?'selected':''}>up</option>
+            <option value="down" ${iface.state==='down'?'selected':''}>down</option>
+            <option value="absent" ${iface.state==='absent'?'selected':''}>absent</option>
+          </select>
+        </div>
+        <div class="form-group"><label>MTU</label><input type="number" value="${iface.mtu}" placeholder="1500" oninput="interfaces[${i}].mtu=this.value"></div>
+        ${ipConfigFields(iface, i, 'ipv4', false)}
+        ${ipConfigFields(iface, i, 'ipv6', true)}
+      </div>
+      ${typeSpecificFields(iface, i)}
+    `;
+    list.appendChild(row);
+
+    // populate tag chips that live inside this row (rendered via raw HTML above)
+    if (iface.type === 'bond') {
+      const c = row.querySelector('#bondPort'+i+'Tags');
+      if (c) iface.bond.port.forEach((p,idx) => {
+        const t = document.createElement('span'); t.className='ci-tag';
+        t.innerHTML = `${esc(p)} <span class="tag-remove" onclick="removePortTag(${i},'bond',${idx})">×</span>`;
+        c.appendChild(t);
+      });
+    }
+    if (iface.type === 'linux-bridge' || iface.type === 'ovs-bridge') {
+      const c = row.querySelector('#bridgePort'+i+'Tags');
+      if (c) iface.bridge.port.forEach((p,idx) => {
+        const t = document.createElement('span'); t.className='ci-tag';
+        t.innerHTML = `${esc(p)} <span class="tag-remove" onclick="removePortTag(${i},'bridge',${idx})">×</span>`;
+        c.appendChild(t);
+      });
+    }
+    ['ipv4','ipv6'].forEach(family => {
+      if (iface[family].method === 'static') {
+        const c = row.querySelector('#ip'+family+'Tags'+i);
+        if (c) iface[family].addresses.forEach((a,idx) => {
+          const t = document.createElement('span'); t.className='ci-tag';
+          t.innerHTML = `${esc(a)} <span class="tag-remove" onclick="removeIpAddrTag(${i},'${family}',${idx})">×</span>`;
+          c.appendChild(t);
+        });
+      }
+    });
+  });
+  if (!interfaces.length) list.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0">No interfaces configured.</p>';
+}
+
+// ─── Routes ───────────────────────────────────────────────────────────────────
+function addRoute() { routes.push({ destination:'', nextHopInterface:'', nextHopAddress:'', metric:'', tableId:'' }); renderRoutes(); }
+function removeRoute(i) { routes.splice(i,1); renderRoutes(); }
+function renderRoutes() {
+  const list = document.getElementById('routeList');
+  list.innerHTML = '';
+  routes.forEach((r,i) => {
+    const row = document.createElement('div');
+    row.className = 'dynamic-row';
+    row.innerHTML = `
+      <div class="dynamic-row-header"><span class="dynamic-row-title">Route ${i+1}</span>
+        <button class="btn btn-secondary btn-sm" onclick="removeRoute(${i})">Remove</button></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Destination <span class="req">*</span></label><input type="text" class="mono" value="${escA(r.destination)}" placeholder="0.0.0.0/0" oninput="routes[${i}].destination=this.value"></div>
+        <div class="form-group"><label>Next-Hop Interface</label><input type="text" class="mono" value="${escA(r.nextHopInterface)}" placeholder="bond0" oninput="routes[${i}].nextHopInterface=this.value"></div>
+        <div class="form-group"><label>Next-Hop Address</label><input type="text" class="mono" value="${escA(r.nextHopAddress)}" placeholder="10.0.0.1" oninput="routes[${i}].nextHopAddress=this.value"></div>
+        <div class="form-group"><label>Metric</label><input type="number" value="${r.metric}" oninput="routes[${i}].metric=this.value"></div>
+        <div class="form-group"><label>Table ID</label><input type="number" value="${r.tableId}" oninput="routes[${i}].tableId=this.value"></div>
+      </div>`;
+    list.appendChild(row);
+  });
+  if (!routes.length) list.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0">No static routes configured.</p>';
+}
+
+// ─── Route rules ──────────────────────────────────────────────────────────────
+function addRouteRule() { routeRules.push({ ipFrom:'', ipTo:'', routeTable:'', priority:'' }); renderRouteRules(); }
+function removeRouteRule(i) { routeRules.splice(i,1); renderRouteRules(); }
+function renderRouteRules() {
+  const list = document.getElementById('routeRuleList');
+  list.innerHTML = '';
+  routeRules.forEach((r,i) => {
+    const row = document.createElement('div');
+    row.className = 'dynamic-row';
+    row.innerHTML = `
+      <div class="dynamic-row-header"><span class="dynamic-row-title">Rule ${i+1}</span>
+        <button class="btn btn-secondary btn-sm" onclick="removeRouteRule(${i})">Remove</button></div>
+      <div class="form-grid">
+        <div class="form-group"><label>IP From</label><input type="text" class="mono" value="${escA(r.ipFrom)}" placeholder="192.168.1.0/24" oninput="routeRules[${i}].ipFrom=this.value"></div>
+        <div class="form-group"><label>IP To</label><input type="text" class="mono" value="${escA(r.ipTo)}" placeholder="10.0.0.0/8" oninput="routeRules[${i}].ipTo=this.value"></div>
+        <div class="form-group"><label>Route Table</label><input type="number" value="${r.routeTable}" oninput="routeRules[${i}].routeTable=this.value"></div>
+        <div class="form-group"><label>Priority</label><input type="number" value="${r.priority}" oninput="routeRules[${i}].priority=this.value"></div>
+      </div>`;
+    list.appendChild(row);
+  });
+  if (!routeRules.length) list.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0">No route rules configured.</p>';
+}
+
+// ─── Review ───────────────────────────────────────────────────────────────────
+function renderReview() {
+  const sections = [
+    { title: 'Interfaces', rows: interfaces.filter(i=>i.name).map(i => [i.name, i.type]) },
+    { title: 'Routing & DNS', rows: [
+      ['Static Routes', routes.filter(r=>r.destination).length],
+      ['Route Rules', routeRules.filter(r=>r.ipFrom||r.ipTo).length],
+      ['DNS Search Domains', dnsSearch.length],
+      ['DNS Servers', dnsServer.length],
+    ]},
+  ];
+  const c = document.getElementById('reviewSummary');
+  c.innerHTML = sections.map(({title, rows}) => `
+    <div class="review-section">
+      <div class="review-section-title">${esc(title)}</div>
+      <div class="review-grid">
+        ${rows.length ? rows.map(([k,val]) => `<div class="review-item"><div class="review-item-key">${esc(k)}</div><div class="review-item-val">${esc(String(val))}</div></div>`).join('') : '<div class="review-item"><div class="review-item-val" style="color:var(--text-muted)">None configured</div></div>'}
+      </div>
+    </div>`).join('');
+}
+
+// ─── YAML emission (generic recursive emitter — handles arbitrary nesting) ─────
+const YAML_BOOLS = /^(true|false|yes|no|on|off|null|~)$/i;
+const YAML_SPECIAL = /[:#\[\]{},|>&*!?%@`\n\r\t]/;
+function yamlStr(s) {
+  if (s === null || s === undefined) return 'null';
+  s = String(s);
+  if (s === '') return "''";
+  if (YAML_BOOLS.test(s)) return `'${s}'`;
+  if (/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(s)) return `'${s}'`;
+  if (YAML_SPECIAL.test(s) || s.startsWith(' ') || s.endsWith(' ') || s.startsWith('-') || s.startsWith("'") || s.startsWith('"')) {
+    if (!s.includes("'")) return `'${s}'`;
+    return `"${s.replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\n/g,'\\n')}"`;
+  }
+  return s;
+}
+function yamlScalar(v) { return (typeof v === 'boolean' || typeof v === 'number') ? String(v) : yamlStr(v); }
+function isEmptyObj(v) { return v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0; }
+function emitYaml(node, indent) {
+  const pad = '  '.repeat(indent);
+  let out = '';
+  if (Array.isArray(node)) {
+    node.forEach(item => {
+      if (item && typeof item === 'object' && !Array.isArray(item)) {
+        const keys = Object.keys(item).filter(k => item[k] !== undefined && item[k] !== null && !isEmptyObj(item[k]));
+        keys.forEach((k, idx) => {
+          const prefix = idx === 0 ? pad + '- ' : pad + '  ';
+          out += emitKV(prefix, k, item[k], indent + 1);
+        });
+      } else {
+        out += pad + '- ' + yamlScalar(item) + '\n';
+      }
+    });
+  } else if (node && typeof node === 'object') {
+    Object.keys(node).forEach(k => {
+      const v = node[k];
+      if (v === undefined || v === null || isEmptyObj(v)) return;
+      out += emitKV(pad, k, v, indent);
+    });
+  }
+  return out;
+}
+function emitKV(prefix, k, v, indent) {
+  if (Array.isArray(v)) {
+    if (!v.length) return prefix + k + ': []\n';
+    return prefix + k + ':\n' + emitYaml(v, indent + 1);
+  }
+  if (v && typeof v === 'object') {
+    if (isEmptyObj(v)) return prefix + k + ': {}\n';
+    return prefix + k + ':\n' + emitYaml(v, indent + 1);
+  }
+  return prefix + k + ': ' + yamlScalar(v) + '\n';
+}
+
+// ─── State building ───────────────────────────────────────────────────────────
+function parseIpPrefix(s) {
+  const m = String(s).trim().match(/^([^\/]+)\/(\d+)$/);
+  if (!m) return null;
+  return { ip: m[1], 'prefix-length': +m[2] };
+}
+function buildIpConfig(cfg, isV6) {
+  if (!cfg || cfg.method === 'disabled') return { enabled: false };
+  const o = { enabled: true, dhcp: cfg.method === 'dhcp' };
+  if (isV6) o.autoconf = cfg.method === 'autoconf';
+  if (cfg.method === 'static') {
+    const addrs = cfg.addresses.map(parseIpPrefix).filter(Boolean);
+    if (addrs.length) o.address = addrs;
+  }
+  return o;
+}
+function buildInterface(iface) {
+  const o = { name: iface.name, type: iface.type, state: iface.state || 'up' };
+  if (iface.mtu) o.mtu = +iface.mtu;
+  o.ipv4 = buildIpConfig(iface.ipv4, false);
+  o.ipv6 = buildIpConfig(iface.ipv6, true);
+
+  if (iface.type === 'ethernet') {
+    const eth = {};
+    if (iface.ethernet.autoneg) eth['auto-negotiation'] = true;
+    if (iface.ethernet.speed) eth.speed = +iface.ethernet.speed;
+    if (iface.ethernet.duplex) eth.duplex = iface.ethernet.duplex;
+    if (iface.ethernet.sriovEnabled) {
+      const vfs = iface.ethernet.vfs.map((vf, idx) => {
+        const v = { id: idx };
+        if (vf.mac) v['mac-address'] = vf.mac;
+        if (vf.spoofCheck) v['spoof-check'] = vf.spoofCheck === 'true';
+        if (vf.trust) v.trust = vf.trust === 'true';
+        if (vf.vlanId) v['vlan-id'] = +vf.vlanId;
+        if (vf.minTxRate) v['min-tx-rate'] = +vf.minTxRate;
+        if (vf.maxTxRate) v['max-tx-rate'] = +vf.maxTxRate;
+        return v;
+      });
+      eth['sr-iov'] = { 'total-vfs': +(iface.ethernet.totalVfs || vfs.length || 0), vfs };
+    }
+    if (Object.keys(eth).length) o.ethernet = eth;
+  } else if (iface.type === 'bond') {
+    const agg = { mode: iface.bond.mode, port: iface.bond.port.slice() };
+    const opts = {};
+    if (iface.bond.miimon) opts.miimon = +iface.bond.miimon;
+    if (iface.bond.xmitHashPolicy) opts.xmit_hash_policy = iface.bond.xmitHashPolicy;
+    if (iface.bond.lacpRate) opts.lacp_rate = iface.bond.lacpRate;
+    (iface.bond.extraOptions || '').split('\n').forEach(line => {
+      const idx = line.indexOf(':');
+      if (idx > 0) { const k = line.slice(0,idx).trim(); const val = line.slice(idx+1).trim(); if (k && val) opts[k] = val; }
+    });
+    if (Object.keys(opts).length) agg.options = opts;
+    o['link-aggregation'] = agg;
+  } else if (iface.type === 'vlan') {
+    o.vlan = { 'base-iface': iface.vlan.baseIface, id: +iface.vlan.id };
+  } else if (iface.type === 'linux-bridge' || iface.type === 'ovs-bridge') {
+    const br = { port: iface.bridge.port.map(p => ({ name: p })) };
+    if (iface.type === 'linux-bridge') br.options = { stp: { enabled: !!iface.bridge.stp } };
+    o.bridge = br;
+  }
+  return o;
+}
+function buildState() {
+  const state = {};
+  const ifaces = interfaces.filter(i => i.name).map(buildInterface);
+  if (ifaces.length) state.interfaces = ifaces;
+
+  const validRoutes = routes.filter(r => r.destination);
+  if (validRoutes.length) state.routes = { config: validRoutes.map(r => {
+    const o = { destination: r.destination };
+    if (r.nextHopInterface) o['next-hop-interface'] = r.nextHopInterface;
+    if (r.nextHopAddress) o['next-hop-address'] = r.nextHopAddress;
+    if (r.metric) o.metric = +r.metric;
+    if (r.tableId) o['table-id'] = +r.tableId;
+    return o;
+  })};
+
+  const validRules = routeRules.filter(r => r.ipFrom || r.ipTo);
+  if (validRules.length) state['route-rules'] = { config: validRules.map(r => {
+    const o = {};
+    if (r.ipFrom) o['ip-from'] = r.ipFrom;
+    if (r.ipTo) o['ip-to'] = r.ipTo;
+    if (r.routeTable) o['route-table'] = +r.routeTable;
+    if (r.priority) o.priority = +r.priority;
+    return o;
+  })};
+
+  if (dnsSearch.length || dnsServer.length) {
+    const dns = {};
+    if (dnsSearch.length) dns.search = dnsSearch.slice();
+    if (dnsServer.length) dns.server = dnsServer.slice();
+    state['dns-resolver'] = { config: dns };
+  }
+  return state;
+}
+
+function generateStateYaml() {
+  const state = buildState();
+  const header = `# Generated by Hatch — https://bootsha.net/hatch/\n# Apply with: nmstatectl apply <file>\n\n`;
+  return header + emitYaml(state, 0).trimEnd() + '\n';
+}
+function generateNNCP() {
+  const state = buildState();
+  const v = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  const nncp = {
+    apiVersion: 'nmstate.io/v1',
+    kind: 'NodeNetworkConfigurationPolicy',
+    metadata: { name: v('nncpName') || 'network-policy' },
+    spec: {
+      nodeSelector: { [v('nodeSelectorKey') || 'kubernetes.io/hostname']: v('nodeSelectorValue') || 'node01' },
+      desiredState: state,
+    },
+  };
+  const header = `# Generated by Hatch — https://bootsha.net/hatch/\n# Apply with: oc apply -f <file>\n\n`;
+  return header + '---\n' + emitYaml(nncp, 0).trimEnd() + '\n';
+}
+
+function generateAll() {
+  const stateYaml = generateStateYaml();
+  const nncpYaml = generateNNCP();
+  document.getElementById('stateOutput').textContent = stateYaml;
+  document.getElementById('nncpOutput').textContent = nncpYaml;
+  document.getElementById('outputArea').style.display = '';
+  window.scrollTo(0, document.getElementById('outputArea').offsetTop - 80);
+}
+
+function downloadFile(outputId, filename) {
+  const content = document.getElementById(outputId).textContent;
+  if (!content) return;
+  const blob = new Blob([content], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function copyOutput(outputId) {
+  const content = document.getElementById(outputId).textContent;
+  if (!content) return;
+  const showFeedback = () => { const fb = document.getElementById('copyFeedback'); fb.classList.add('show'); setTimeout(() => fb.classList.remove('show'), 2000); };
+  navigator.clipboard.writeText(content).then(showFeedback).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = content;
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    showFeedback();
+  });
+}
+
+// ─── Utility ──────────────────────────────────────────────────────────────────
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escA(s) { return esc(s).replace(/"/g,'&quot;'); }
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+init();
+renderRoutes();
+renderRouteRules();
+renderTags('dnsSearch');
+renderTags('dnsServer');
+</script>
+</body>
+</html>
