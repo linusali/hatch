@@ -669,7 +669,7 @@
         </div>
         <div class="form-group" id="adminPasswordGroup">
           <label>Administrator Password</label>
-          <input type="password" id="adminPassword" placeholder="Leave blank for empty password" autocomplete="new-password">
+          <input type="password" id="adminPassword" placeholder="Leave blank to leave the Administrator password untouched" autocomplete="new-password">
         </div>
       </div>
       <div style="margin-top: 20px;">
@@ -1488,7 +1488,7 @@ function generateXML() {
               <Name>${escXml(u.name)}</Name>
             </LocalAccount>`).join('')}
           </LocalAccounts>` : '';
-  const adminInner = adminMode !== 'disable' ? `
+  const adminInner = (adminMode !== 'disable' && adminPwd) ? `
           <AdministratorPassword>
             <Value>${escXml(adminPwd)}</Value>
             <PlainText>true</PlainText>
