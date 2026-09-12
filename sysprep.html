@@ -885,7 +885,7 @@
     <div class="card">
       <h2>Advanced Options</h2>
       <p class="subtitle">Additional configuration for enterprise deployments.</p>
-      <div class="info-box">ℹ️ Most standard Windows Server/Client media contain multiple editions in one image. Without Image Index or Image Name, Setup will stop and prompt you to pick one interactively. Index (numeric) is more reliable across media — Name must exactly match the image's name in the WIM (verify with <code>dism /Get-WimInfo /WimFile:install.wim</code>). Index takes priority if both are set.</div>
+      <div class="info-box">ℹ️ Most standard Windows Server/Client media contain multiple editions in one image. Without one of Image Index, Image Name, or Image Description, Setup will stop and prompt you to pick one interactively. Priority if more than one is set: Index → Name → Description. Description (e.g. "Windows 11 Pro", "Windows Server 2025 SERVERSTANDARDCORE") is what Microsoft/Red Hat's own reference unattend files use for most versions — verify exact values with <code>dism /Get-WimInfo /WimFile:install.wim</code>.</div>
       <div class="form-grid">
         <div class="form-group">
           <label>Organization Name</label>
@@ -908,11 +908,36 @@
           <input type="text" id="imageName" placeholder="e.g. Windows Server 2022 SERVERDATACENTER">
         </div>
         <div class="form-group">
+          <label>Image Description <span class="hint">Used if Index and Name are blank</span></label>
+          <input type="text" id="imageDescription" placeholder="e.g. Windows 11 Pro">
+        </div>
+        <div class="form-group">
           <label>WDS (Windows Deployment Services)</label>
           <select id="wdsEnabled">
             <option value="false">Not using WDS</option>
             <option value="true">Using WDS</option>
           </select>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <div class="section-title">Edition Servicing Package <span class="hint">Optional — Windows Server 2022 Evaluation workaround</span></div>
+        <div class="info-box">ℹ️ Some Windows Server 2022 Evaluation media ignores Image Name/Index for edition selection and still prompts interactively. Red Hat's own kubevirt-tekton-tasks reference works around this with a top-level &lt;servicing&gt; package that force-enables the target edition. Leave blank unless you hit that specific prompt on WS2022 Eval — other versions/media don't need this.</div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Enable edition servicing package</div>
+            <div class="toggle-desc">Emits a top-level &lt;servicing&gt; block that force-activates the named edition package</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="servicingEnabled" onchange="document.getElementById('servicingOptions').classList.toggle('section-hidden', !this.checked)"><span class="slider"></span></label>
+        </div>
+        <div id="servicingOptions" class="section-hidden form-grid" style="margin-top:12px">
+          <div class="form-group">
+            <label>Package Name</label>
+            <input type="text" id="servicingPackageName" placeholder="e.g. Microsoft-Windows-ServerDatacenterEvalEdition">
+          </div>
+          <div class="form-group">
+            <label>Package Version <span class="hint">Must match your ISO's build</span></label>
+            <input type="text" id="servicingPackageVersion" placeholder="e.g. 10.0.20348.587">
+          </div>
         </div>
       </div>
       <div style="margin-top:16px">
@@ -1304,6 +1329,8 @@ function renderReview() {
     ]},
     { title: 'Image Selection', rows: [
       ['Image Index', v('imageIndex')||'(none)'], ['Image Name', v('imageName')||'(none)'],
+      ['Image Description', v('imageDescription')||'(none)'],
+      ['Servicing Package', ch('servicingEnabled') ? (v('servicingPackageName')||'(none)') : 'Disabled'],
     ]},
     { title: 'Golden Image / Sysprep Capture', rows: [
       ['Enabled', ch('goldenImageMode')?'Yes':'No'],
@@ -1532,10 +1559,13 @@ function generateXML() {
   const imageSource = val('imageInstallSource');
   const imageIndex = val('imageIndex');
   const imageName = val('imageName');
+  const imageDescription = val('imageDescription');
   const imageMetaData = imageIndex
     ? `<MetaData wcm:action="add"><Key>/IMAGE/INDEX</Key><Value>${escXml(imageIndex)}</Value></MetaData>`
     : imageName
     ? `<MetaData wcm:action="add"><Key>/IMAGE/NAME</Key><Value>${escXml(imageName)}</Value></MetaData>`
+    : imageDescription
+    ? `<MetaData wcm:action="add"><Key>/Image/Description</Key><Value>${escXml(imageDescription)}</Value></MetaData>`
     : '';
   const imageInstallXml = (imageSource || imageMetaData) ? `
       <ImageInstall>
@@ -1545,6 +1575,15 @@ function generateXML() {
           <WillShowUI>Never</WillShowUI>
         </OSImage>
       </ImageInstall>` : '';
+
+  const servicingPackageName = ch('servicingEnabled') ? val('servicingPackageName') : '';
+  const servicingPackageVersion = val('servicingPackageVersion');
+  const servicingXml = servicingPackageName ? `
+  <servicing>
+    <package action="configure">
+      <assemblyIdentity name="${escXml(servicingPackageName)}" version="${escXml(servicingPackageVersion)}" processorArchitecture="${arch}" publicKeyToken="31bf3856ad364e35" language="" />
+    </package>
+  </servicing>` : '';
 
   const goldenImageMode = ch('goldenImageMode');
   const auditForceShutdown = ch('auditForceShutdown');
@@ -1587,6 +1626,7 @@ function generateXML() {
 <unattend xmlns="urn:schemas-microsoft-com:unattend"
           xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+${servicingXml}
 
   <!-- ═══════════════════════════════════════════════════════════════════════
        PASS 1: windowsPE — Disk partitioning and OS image selection
