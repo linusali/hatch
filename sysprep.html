@@ -334,6 +334,13 @@
     display: flex;
     gap: 10px;
   }
+  .toggle-row.toggle-row-highlight {
+    background: rgba(255,140,0,0.08);
+    border: 1px solid rgba(255,140,0,0.35);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+  }
+  .toggle-row-highlight .toggle-label { color: #ffb347; font-weight: 600; }
   .output-actions {
     display: flex;
     gap: 12px;
@@ -488,9 +495,9 @@
           </select>
         </div>
       </div>
-      <div class="toggle-row" style="margin-top:16px">
+      <div class="toggle-row toggle-row-highlight" style="margin-top:16px">
         <div>
-          <div class="toggle-label">Accept the Microsoft Software License Terms (EULA)</div>
+          <div class="toggle-label">⚠️ Accept the Microsoft Software License Terms (EULA) <span class="required">*</span></div>
           <div class="toggle-desc">Required for unattended setup to skip the license page. Unchecked, the generated XML sets AcceptEula to false and Setup will stop and prompt you to accept it manually.</div>
         </div>
         <label class="toggle"><input type="checkbox" id="acceptEula"><span class="slider"></span></label>
