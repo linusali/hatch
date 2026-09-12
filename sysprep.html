@@ -488,6 +488,13 @@
           </select>
         </div>
       </div>
+      <div class="toggle-row" style="margin-top:16px">
+        <div>
+          <div class="toggle-label">Accept the Microsoft Software License Terms (EULA)</div>
+          <div class="toggle-desc">Required for unattended setup to skip the license page. Unchecked, the generated XML sets AcceptEula to false and Setup will stop and prompt you to accept it manually.</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="acceptEula"><span class="slider"></span></label>
+      </div>
     </div>
   </div>
 
@@ -1012,6 +1019,7 @@
     <div class="card" id="xmlOutputCard" style="display:none">
       <h2>Generated autounattend.xml</h2>
       <p class="subtitle">Copy this content into a file named <code>autounattend.xml</code> and place it in the root of your installation media.</p>
+      <div class="info-box" id="eulaWarning" style="display:none">⚠️ You have not ticked "Accept the Microsoft Software License Terms" — the generated file sets <code>AcceptEula</code> to <code>false</code>, so Windows Setup will stop and wait for you to accept the license manually. Go back to Windows Edition &amp; Architecture and check that box if you want a fully unattended install.</div>
       <pre class="xml-output" id="xmlOutput"></pre>
       <div class="output-actions">
         <button class="btn btn-primary btn-lg" onclick="downloadXML()">⬇ Download autounattend.xml</button>
@@ -1304,6 +1312,7 @@ function renderReview() {
     { title: 'Windows Edition', rows: [
       ['Windows Version', v('winVersion')], ['Edition', v('winEdition')], ['Architecture', v('winArch')],
       ['Firmware', v('firmwareType')], ['Product Key', v('productKey')||'(none)'],
+      ['EULA Accepted', ch('acceptEula') ? 'Yes' : 'No — Setup will prompt'],
     ]},
     { title: 'Locale', rows: [
       ['UI Language', v('uiLanguage')], ['Time Zone', v('timeZone')], ['Keyboard', v('keyboardLayout')],
@@ -1556,7 +1565,7 @@ function generateXML() {
 
   const pkXml = `
       <UserData>
-        <AcceptEula>true</AcceptEula>
+        <AcceptEula>${ch('acceptEula')}</AcceptEula>
         <FullName>${escXml(ownerName||'User')}</FullName>
         <Organization>${escXml(orgName||'')}</Organization>
         ${productKey ? `<ProductKey><Key>${escXml(productKey)}</Key><WillShowUI>Never</WillShowUI></ProductKey>` : ''}
@@ -1719,6 +1728,7 @@ ${auditUserSettingsXml}
 
   document.getElementById('xmlOutput').textContent = xml;
   document.getElementById('xmlOutputCard').style.display = '';
+  document.getElementById('eulaWarning').style.display = ch('acceptEula') ? 'none' : '';
   window.generatedXML = xml;
   window.scrollTo(0, document.getElementById('xmlOutputCard').offsetTop - 80);
 }
