@@ -863,6 +863,7 @@
     <div class="card">
       <h2>Golden Image / Sysprep Capture <span class="hint">Optional</span></h2>
       <p class="subtitle">For building a reusable VM template: boot into Audit mode, run setup commands (e.g. install VirtIO/QEMU guest agent), then generalize and shut down.</p>
+      <div class="info-box">⚠️ Do not also configure Auto-Logon (Step: Administrator &amp; User Accounts) when using this mode. Per Microsoft's documentation, Audit mode automatically enables and signs in as the built-in Administrator on its own — explicitly setting Auto-Logon here is unnecessary and can prevent the image from transitioning through the audit/generalize passes correctly.</div>
       <div class="toggle-row">
         <div>
           <div class="toggle-label">Enable Golden Image mode</div>
