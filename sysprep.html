@@ -852,6 +852,32 @@
         <button class="btn btn-secondary" onclick="quickAdd('cmd /c reg add &quot;HKLM\\System\\CurrentControlSet\\Control\\Remote Assistance&quot; /v fAllowToGetHelp /t REG_DWORD /d 0 /f', 'specialize')">Disable Remote Assist</button>
       </div>
     </div>
+
+    <div class="card">
+      <h2>Golden Image / Sysprep Capture <span class="hint">Optional</span></h2>
+      <p class="subtitle">For building a reusable VM template: boot into Audit mode, run setup commands (e.g. install VirtIO/QEMU guest agent), then generalize and shut down.</p>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Enable Golden Image mode</div>
+          <div class="toggle-desc">Adds Reseal (Audit mode) and an auditUser pass that runs commands then Generalizes</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="goldenImageMode" onchange="renderAuditCommands()"><span class="slider"></span></label>
+      </div>
+      <div id="goldenImageOptions" class="section-hidden">
+        <div style="margin:16px 0">
+          <div class="section-title">Audit-Mode Commands (run before Generalize)</div>
+          <div class="commands-list" id="auditCommandList"></div>
+          <button class="btn btn-secondary" style="margin-top:10px" onclick="addAuditCommand()">+ Add Command</button>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Shut down after Generalize</div>
+            <div class="toggle-desc">Recommended — leaves the VM powered off and ready to be captured as a template</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="auditForceShutdown" checked><span class="slider"></span></label>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- STEP 8: Advanced Options -->
@@ -859,6 +885,7 @@
     <div class="card">
       <h2>Advanced Options</h2>
       <p class="subtitle">Additional configuration for enterprise deployments.</p>
+      <div class="info-box">ℹ️ Most standard Windows Server/Client media contain multiple editions in one image. Without Image Index or Image Name, Setup will stop and prompt you to pick one interactively. Index (numeric) is more reliable across media — Name must exactly match the image's name in the WIM (verify with <code>dism /Get-WimInfo /WimFile:install.wim</code>). Index takes priority if both are set.</div>
       <div class="form-grid">
         <div class="form-group">
           <label>Organization Name</label>
@@ -871,6 +898,14 @@
         <div class="form-group">
           <label>Image Install Source <span class="hint">For WIM/ESD files</span></label>
           <input type="text" id="imageInstallSource" placeholder="Leave blank for default">
+        </div>
+        <div class="form-group">
+          <label>Image Index <span class="hint">Selects edition by number</span></label>
+          <input type="number" id="imageIndex" min="1" placeholder="e.g. 1 — from dism /Get-WimInfo">
+        </div>
+        <div class="form-group">
+          <label>Image Name <span class="hint">Used if Image Index is blank</span></label>
+          <input type="text" id="imageName" placeholder="e.g. Windows Server 2022 SERVERDATACENTER">
         </div>
         <div class="form-group">
           <label>WDS (Windows Deployment Services)</label>
@@ -982,6 +1017,7 @@ let currentStep = 0;
 let localUsers = [];
 let specializeCommands = [];
 let firstLogonCommands = [];
+let auditCommands = [];
 let driverPaths = [];
 let customPartitions = [
   { type: 'EFI', size: 260, fs: 'FAT32', label: 'System' },
@@ -1197,6 +1233,25 @@ function renderCommands(type) {
   if (!arr.length) list.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0">No commands configured.</p>';
 }
 
+function addAuditCommand() { auditCommands.push(''); renderAuditCommands(); }
+function removeAuditCommand(i) { auditCommands.splice(i,1); renderAuditCommands(); }
+function renderAuditCommands() {
+  const enabled = document.getElementById('goldenImageMode').checked;
+  document.getElementById('goldenImageOptions').classList.toggle('section-hidden', !enabled);
+  const list = document.getElementById('auditCommandList');
+  list.innerHTML = '';
+  auditCommands.forEach((cmd, i) => {
+    const row = document.createElement('div');
+    row.className = 'command-row';
+    row.innerHTML = `
+      <span class="command-order">${i+1}</span>
+      <input type="text" value="${escHA(cmd)}" placeholder="e.g. PowerShell -ExecutionPolicy Bypass -NoProfile F:\\post-install.ps1" oninput="auditCommands[${i}]=this.value">
+      <button class="btn btn-secondary" style="padding:6px 10px" onclick="removeAuditCommand(${i})">✕</button>`;
+    list.appendChild(row);
+  });
+  if (!auditCommands.length) list.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0">No commands configured.</p>';
+}
+
 function addDriverTag(e) {
   if (e.key === 'Enter') {
     e.preventDefault();
@@ -1246,6 +1301,14 @@ function renderReview() {
       ['Specialize Cmds', specializeCommands.filter(Boolean).length],
       ['FirstLogon Cmds', firstLogonCommands.filter(Boolean).length],
       ['Enable RDP', ch('enableRDP')?'Yes':'No'],
+    ]},
+    { title: 'Image Selection', rows: [
+      ['Image Index', v('imageIndex')||'(none)'], ['Image Name', v('imageName')||'(none)'],
+    ]},
+    { title: 'Golden Image / Sysprep Capture', rows: [
+      ['Enabled', ch('goldenImageMode')?'Yes':'No'],
+      ['Audit Cmds', auditCommands.filter(Boolean).length],
+      ['Shutdown after Generalize', ch('auditForceShutdown')?'Yes':'No'],
     ]},
   ];
   document.getElementById('reviewSummary').innerHTML = sections.map(({title, rows}) => `
@@ -1467,14 +1530,55 @@ function generateXML() {
       </UserData>`;
 
   const imageSource = val('imageInstallSource');
-  const imageInstallXml = imageSource ? `
+  const imageIndex = val('imageIndex');
+  const imageName = val('imageName');
+  const imageMetaData = imageIndex
+    ? `<MetaData wcm:action="add"><Key>/IMAGE/INDEX</Key><Value>${escXml(imageIndex)}</Value></MetaData>`
+    : imageName
+    ? `<MetaData wcm:action="add"><Key>/IMAGE/NAME</Key><Value>${escXml(imageName)}</Value></MetaData>`
+    : '';
+  const imageInstallXml = (imageSource || imageMetaData) ? `
       <ImageInstall>
         <OSImage>
-          <InstallFrom><Path>${escXml(imageSource)}</Path></InstallFrom>
+          <InstallFrom>${imageSource?`<Path>${escXml(imageSource)}</Path>`:''}${imageMetaData}</InstallFrom>
           <InstallTo><DiskID>${diskNum}</DiskID><PartitionID>${getWinPartitionId(diskLayout)}</PartitionID></InstallTo>
           <WillShowUI>Never</WillShowUI>
         </OSImage>
       </ImageInstall>` : '';
+
+  const goldenImageMode = ch('goldenImageMode');
+  const auditForceShutdown = ch('auditForceShutdown');
+  const validAuditCmds = auditCommands.filter(Boolean);
+  const resealXml = goldenImageMode ? `
+    <component name="Microsoft-Windows-Deployment"
+               processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">
+      <Reseal>
+        <Mode>Audit</Mode>
+      </Reseal>
+    </component>` : '';
+  const auditUserSettingsXml = goldenImageMode ? `
+  <settings pass="auditUser">
+    <component name="Microsoft-Windows-Deployment"
+               processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">${validAuditCmds.length ? `
+      <RunSynchronous>${validAuditCmds.map((cmd,i) => `
+        <RunSynchronousCommand wcm:action="add">
+          <Order>${i+1}</Order>
+          <Path>${escXml(cmd)}</Path>
+          <WillReboot>Never</WillReboot>
+        </RunSynchronousCommand>`).join('')}
+      </RunSynchronous>` : ''}
+      <Generalize>
+        <Mode>OOBE</Mode>
+        <ForceShutdownNow>${auditForceShutdown}</ForceShutdownNow>
+      </Generalize>
+    </component>
+  </settings>` : '';
 
   const xml = `<?xml version="1.0" encoding="utf-8"?>
 <!-- Generated by Hatch — https://github.com/pages -->
@@ -1562,9 +1666,9 @@ function generateXML() {
                language="neutral"
                versionScope="nonSxS">${oobeXml}${autoLogonXml}
       ${userAccountsXml}${firstLogonXml}
-    </component>
+    </component>${resealXml}
   </settings>
-
+${auditUserSettingsXml}
 </unattend>`;
 
   document.getElementById('xmlOutput').textContent = xml;
@@ -1599,6 +1703,7 @@ init();
 renderLocalUsers();
 renderCommands('specialize');
 renderCommands('firstlogon');
+renderAuditCommands();
 </script>
 </body>
 </html>
