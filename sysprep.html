@@ -1516,13 +1516,19 @@ function generateXML() {
   if (ch('disableSmartScreen')) allSpecCmds.push('cmd /c reg add "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer" /v SmartScreenEnabled /t REG_SZ /d "Off" /f');
 
   const specCmdsXml = allSpecCmds.length ? `
+    <component name="Microsoft-Windows-Deployment"
+               processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">
       <RunSynchronous>${allSpecCmds.map((cmd,i) => `
         <RunSynchronousCommand wcm:action="add">
           <Order>${i+1}</Order>
           <Path>${escXml(cmd)}</Path>
           <WillReboot>Never</WillReboot>
         </RunSynchronousCommand>`).join('')}
-      </RunSynchronous>` : '';
+      </RunSynchronous>
+    </component>` : '';
 
   const extraFirstLogon = [];
   if (ch('showExtensions')) extraFirstLogon.push('cmd /c reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced" /v HideFileExt /t REG_DWORD /d 0 /f');
@@ -1683,7 +1689,7 @@ ${servicingXml}
       <ComputerName>${escXml(computerName)}</ComputerName>
       <TimeZone>${escXml(tz)}</TimeZone>
       ${orgName ? `<RegisteredOrganization>${escXml(orgName)}</RegisteredOrganization>` : ''}
-      ${ownerName ? `<RegisteredOwner>${escXml(ownerName)}</RegisteredOwner>` : ''}${specCmdsXml}
+      ${ownerName ? `<RegisteredOwner>${escXml(ownerName)}</RegisteredOwner>` : ''}
     </component>
     <component name="Microsoft-Windows-UnattendedJoin"
                processorArchitecture="${arch}"
@@ -1693,7 +1699,7 @@ ${servicingXml}
       <Identification>
         ${joinXml}
       </Identification>
-    </component>
+    </component>${specCmdsXml}
   </settings>
 
   <!-- ═══════════════════════════════════════════════════════════════════════
