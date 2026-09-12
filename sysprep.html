@@ -1361,8 +1361,23 @@ function generateXML() {
     return `<CreatePartitions>\n              ${create}\n            </CreatePartitions>\n            <ModifyPartitions>\n              ${modify}\n            </ModifyPartitions>`;
   }
 
-  const driverPathsXml = driverPaths.length ? `<DriverPaths>${driverPaths.map((p,i) =>
-    `\n          <PathAndCredentials wcm:action="add" wcm:keyValue="${i+1}"><Path>${escXml(p)}</Path></PathAndCredentials>`).join('')}\n      </DriverPaths>` : '';
+  function getWinPartitionId(layout) {
+    if (layout === 'custom') {
+      const idx = customPartitions.findIndex(p => p.type === 'Windows');
+      return idx >= 0 ? idx+1 : 1;
+    }
+    return isUEFI ? 3 : 2;
+  }
+
+  const pnpCustomizationXml = driverPaths.length ? `
+    <component name="Microsoft-Windows-PnpCustomizationsWinPE"
+               processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS">
+      <DriverPaths>${driverPaths.map((p,i) =>
+    `\n          <PathAndCredentials wcm:action="add" wcm:keyValue="${i+1}"><Path>${escXml(p)}</Path></PathAndCredentials>`).join('')}\n      </DriverPaths>
+    </component>` : '';
 
   const localAccountsInner = localUsers.filter(u=>u.name).length ? `
           <LocalAccounts>${localUsers.filter(u=>u.name).map(u => `
@@ -1438,7 +1453,6 @@ function generateXML() {
         <HideOEMRegistrationScreen>${ch('hideOEMReg')}</HideOEMRegistrationScreen>
         <HideOnlineAccountScreens>${ch('skipMSAccount')}</HideOnlineAccountScreens>
         <HideWirelessSetupInOOBE>${ch('skipNetworkOOBE')}</HideWirelessSetupInOOBE>
-        <NetworkLocation>Work</NetworkLocation>
         <ProtectYourPC>${ch('protectPC')?1:3}</ProtectYourPC>
         <SkipMachineOOBE>${ch('skipOOBE')}</SkipMachineOOBE>
         <SkipUserOOBE>${ch('skipOOBE')}</SkipUserOOBE>
@@ -1457,6 +1471,7 @@ function generateXML() {
       <ImageInstall>
         <OSImage>
           <InstallFrom><Path>${escXml(imageSource)}</Path></InstallFrom>
+          <InstallTo><DiskID>${diskNum}</DiskID><PartitionID>${getWinPartitionId(diskLayout)}</PartitionID></InstallTo>
           <WillShowUI>Never</WillShowUI>
         </OSImage>
       </ImageInstall>` : '';
@@ -1499,8 +1514,7 @@ function generateXML() {
           ${buildDisk(diskLayout)}
         </Disk>
       </DiskConfiguration>${pkXml}
-      ${driverPathsXml}
-    </component>
+    </component>${pnpCustomizationXml}
   </settings>
 
   <!-- ═══════════════════════════════════════════════════════════════════════
