@@ -457,7 +457,7 @@
         </div>
         <div class="form-group">
           <label>Edition <span class="required">*</span></label>
-          <select id="winEdition"></select>
+          <select id="winEdition" onchange="syncImageDescription()"></select>
         </div>
         <div class="form-group">
           <label>Architecture <span class="required">*</span></label>
@@ -893,7 +893,7 @@
     <div class="card">
       <h2>Advanced Options</h2>
       <p class="subtitle">Additional configuration for enterprise deployments.</p>
-      <div class="info-box">ℹ️ Most standard Windows Server/Client media contain multiple editions in one image. Without one of Image Index, Image Name, or Image Description, Setup will stop and prompt you to pick one interactively. Priority if more than one is set: Index → Name → Description. Description (e.g. "Windows 11 Pro", "Windows Server 2025 SERVERSTANDARDCORE") is what Microsoft/Red Hat's own reference unattend files use for most versions — verify exact values with <code>dism /Get-WimInfo /WimFile:install.wim</code>.</div>
+      <div class="info-box">ℹ️ Most standard Windows Server/Client media contain multiple editions in one image. Without one of Image Index, Image Name, or Image Description, Setup will stop and prompt you to pick one interactively. Image Description is pre-filled from the Edition you picked on the first step, but it's only a best-guess string — real media (especially Evaluation ISOs) can use a different exact name. Priority if more than one is set: Index → Name → Description. Always verify against your actual media with <code>dism /Get-WimInfo /WimFile:install.wim</code> before relying on it.</div>
       <div class="form-grid">
         <div class="form-group">
           <label>Organization Name</label>
@@ -916,8 +916,8 @@
           <input type="text" id="imageName" placeholder="e.g. Windows Server 2022 SERVERDATACENTER">
         </div>
         <div class="form-group">
-          <label>Image Description <span class="hint">Used if Index and Name are blank</span></label>
-          <input type="text" id="imageDescription" placeholder="e.g. Windows 11 Pro">
+          <label>Image Description <span class="hint">Auto-filled from Edition — used if Index and Name are blank</span></label>
+          <input type="text" id="imageDescription" placeholder="e.g. Windows 11 Pro" oninput="imageDescTouched=true">
         </div>
         <div class="form-group">
           <label>WDS (Windows Deployment Services)</label>
@@ -1110,6 +1110,8 @@ function init() {
   renderStep();
 }
 
+let imageDescTouched = false;
+
 function onWinVersionChange() {
   const ver = document.getElementById('winVersion').value;
   const edSel = document.getElementById('winEdition');
@@ -1120,6 +1122,14 @@ function onWinVersionChange() {
     opt.textContent = e.label;
     edSel.appendChild(opt);
   });
+  syncImageDescription();
+}
+
+function syncImageDescription() {
+  if (imageDescTouched) return;
+  const edSel = document.getElementById('winEdition');
+  const field = document.getElementById('imageDescription');
+  if (edSel.value) field.value = edSel.value;
 }
 
 function formatProductKey(input) {
