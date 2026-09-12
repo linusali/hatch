@@ -1556,10 +1556,10 @@ function generateXML() {
 
   const pkXml = `
       <UserData>
-        ${productKey ? `<ProductKey><Key>${escXml(productKey)}</Key><WillShowUI>Never</WillShowUI></ProductKey>` : ''}
         <AcceptEula>true</AcceptEula>
         <FullName>${escXml(ownerName||'User')}</FullName>
         <Organization>${escXml(orgName||'')}</Organization>
+        ${productKey ? `<ProductKey><Key>${escXml(productKey)}</Key><WillShowUI>Never</WillShowUI></ProductKey>` : ''}
       </UserData>`;
 
   const imageSource = val('imageInstallSource');
@@ -1619,8 +1619,8 @@ function generateXML() {
         </RunSynchronousCommand>`).join('')}
       </RunSynchronous>` : ''}
       <Generalize>
-        <Mode>OOBE</Mode>
         <ForceShutdownNow>${auditForceShutdown}</ForceShutdownNow>
+        <Mode>OOBE</Mode>
       </Generalize>
     </component>
   </settings>` : '';
